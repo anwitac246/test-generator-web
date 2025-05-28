@@ -14,12 +14,22 @@ import re
 from dotenv import load_dotenv
 from sklearn.metrics.pairwise import cosine_similarity
 import json
+from pymongo import MongoClient
+from bson.objectid import ObjectId
+import datetime
+import pandas as pd
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
 app = Flask(__name__)
 CORS(app)
+
+# MongoDB connection
+mongo_uri = os.getenv('MONGODB_URI')
+mongo_client = MongoClient(mongo_uri)
+db = mongo_client['jeeAce']
+tests_collection = db['tests']
 
 pdf_folder = "./pdfs"
 output_dir = "./pdf_images"
@@ -82,11 +92,9 @@ def generate_questions_api():
     generated_questions = []
     
     for question_data in relevant_questions[:count]:
-       
         mcq = generate_enhanced_mcq(question_data)
         
         if mcq:
-            
             associated_image = find_associated_image(question_data['id'])
             
             question_obj = {
@@ -118,6 +126,81 @@ def generate_questions_api():
         "total_images_in_db": len(images_data)
     }), 200
 
+@app.route('/api/save-test', methods=['POST'])
+def save_test():
+    data = request.json
+    user_id = data.get('userId')
+    test_config = data.get('testConfig')
+    
+    if not user_id or not test_config:
+        return jsonify({"error": "Missing userId or testConfig"}), 400
+
+    test_data = {
+        "userId": user_id,
+        "testType": test_config.get("testType"),
+        "subjects": test_config.get("subjects"),
+        "totalQuestions": test_config.get("totalQuestions"),
+        "timeLimit": test_config.get("timeLimit"),
+        "questions": test_config.get("questions"),
+        "createdAt": datetime.datetime.utcnow(),
+    }
+
+    result = tests_collection.insert_one(test_data)
+    return jsonify({"testId": str(result.inserted_id)}), 201
+
+@app.route('/api/save-test-result', methods=['POST'])
+def save_test_result():
+    data = request.json
+    user_id = data.get('userId')
+    test_id = data.get('testId')
+    results = data.get('results')
+    
+    if not user_id or not test_id or not results:
+        return jsonify({"error": "Missing userId, testId, or results"}), 400
+
+    try:
+        test_id_obj = ObjectId(test_id)
+        tests_collection.update_one(
+            {"_id": test_id_obj, "userId": user_id},
+            {
+                "$set": {
+                    "score": results.get("score"),
+                    "total": results.get("total"),
+                    "percentage": results.get("percentage"),
+                    "detailedResults": results.get("details"),
+                    "completedAt": datetime.datetime.utcnow(),
+                }
+            }
+        )
+        return jsonify({"message": "Test result saved successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to save test result: {str(e)}"}), 500
+
+@app.route('/api/test-history', methods=['POST'])
+def get_test_history():
+    user_id = request.json.get('userId')
+    if not user_id:
+        return jsonify({"error": "Missing userId"}), 400
+
+    tests = tests_collection.find({"userId": user_id}).sort("createdAt", -1)
+    test_list = [
+        {
+            "testId": str(test["_id"]),
+            "testType": test["testType"],
+            "subjects": test["subjects"],
+            "totalQuestions": test["totalQuestions"],
+            "timeLimit": test["timeLimit"],
+            "questions": test["questions"],  # Include questions
+            "createdAt": test["createdAt"].isoformat(),
+            "score": test.get("score"),
+            "total": test.get("total"),
+            "percentage": test.get("percentage"),
+            "completedAt": test.get("completedAt", None).isoformat() if test.get("completedAt") else None,
+        }
+        for test in tests
+    ]
+    return jsonify({"tests": test_list}), 200
+
 @app.route('/api/subjects', methods=['GET'])
 def get_subjects():
     subjects = set()
@@ -130,7 +213,6 @@ def get_subjects():
     }), 200
 
 def extract_pdf_data_enhanced(pdf_path, output_dir):
-    """Enhanced PDF extraction with better question-image association"""
     doc = fitz.open(pdf_path)
     filename = os.path.basename(pdf_path)
     
@@ -195,7 +277,7 @@ def extract_pdf_data_enhanced(pdf_path, output_dir):
             
             for question in questions_on_page:
                 similarity_score = calculate_text_similarity(question["text"], nearby_text)
-                if similarity_score > 0.3:  # Threshold for association
+                if similarity_score > 0.3:
                     associations.append({
                         "question_id": question["id"],
                         "image_id": image_data["id"],
@@ -207,7 +289,6 @@ def extract_pdf_data_enhanced(pdf_path, output_dir):
     return extracted_questions, extracted_images, associations
 
 def extract_questions_from_text(text, page_num, filename, subject):
-    """Extract potential questions from text using patterns"""
     questions = []
     
     question_patterns = [
@@ -235,7 +316,6 @@ def extract_questions_from_text(text, page_num, filename, subject):
     return questions
 
 def extract_text_near_image(page, img_rect, distance_threshold=100):
-    """Extract text near an image based on spatial proximity"""
     words = page.get_text("words")
     nearby_words = []
     
@@ -255,7 +335,6 @@ def extract_text_near_image(page, img_rect, distance_threshold=100):
     return " ".join(nearby_words)
 
 def calculate_text_similarity(text1, text2):
-    """Calculate semantic similarity between two texts"""
     if not text1 or not text2:
         return 0.0
     
@@ -267,7 +346,6 @@ def calculate_text_similarity(text1, text2):
         return 0.0
 
 def store_enhanced_data_to_faiss(questions, images, associations):
-    """Store questions and images in separate FAISS indices"""
     global questions_data, images_data, question_image_associations
    
     if questions:
@@ -284,7 +362,6 @@ def store_enhanced_data_to_faiss(questions, images, associations):
     if images:
         image_embeddings = []
         for image in images:
-            
             text_to_embed = f"{image.get('caption', '')} {image.get('surrounding_text', '')[:500]}"
             embedding = embedder.encode(text_to_embed)
             image_embeddings.append(embedding)
@@ -297,7 +374,6 @@ def store_enhanced_data_to_faiss(questions, images, associations):
     question_image_associations.extend(associations)
 
 def retrieve_relevant_questions(query, subject, k=10):
-    """Retrieve relevant questions using RAG"""
     if not questions_data:
         return []
     
@@ -315,7 +391,6 @@ def retrieve_relevant_questions(query, subject, k=10):
     return relevant_questions[:k]
 
 def filter_questions_by_subject(subject, k=10):
-    """Filter questions by subject when no specific query is provided"""
     filtered_questions = []
     for question in questions_data:
         if subject == 'All' or question.get('subject') == subject:
@@ -324,7 +399,6 @@ def filter_questions_by_subject(subject, k=10):
     return filtered_questions[:k]
 
 def find_associated_image(question_id):
-    """Find image associated with a question"""
     for association in question_image_associations:
         if association["question_id"] == question_id:
             image_id = association["image_id"]
@@ -334,7 +408,6 @@ def find_associated_image(question_id):
     return None
 
 def generate_enhanced_mcq(question_data):
-    """Generate MCQ from question data with better context"""
     text = question_data.get("text", "")
     subject = question_data.get("subject", "")
     
@@ -387,8 +460,6 @@ Answer: [A/B/C/D]
     return None
 
 def parse_mcq_string(mcq_str):
-    """Parse MCQ string into structured format"""
-   
     q_match = re.search(r'Q:\s*(.*?)\s*(?=A\.)', mcq_str, re.DOTALL)
     question = q_match.group(1).strip() if q_match else ""
 
@@ -451,7 +522,6 @@ def evaluate():
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
-    """Get statistics about the processed data"""
     subject_counts = {}
     for question in questions_data:
         subject = question.get('subject', 'Unknown')
@@ -466,7 +536,6 @@ def get_stats():
     }), 200
 
 def process_all_pdfs_on_startup():
-    """Process all existing PDFs on startup"""
     print("Processing all existing PDFs in folder...")
     global questions_data, images_data, question_image_associations
     

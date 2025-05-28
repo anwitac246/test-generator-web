@@ -7,18 +7,17 @@ import {
   createUserWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "../lib/firebase-config";
-
+import { useRouter } from "next/navigation"; // Import useRouter
 import { FcGoogle } from "react-icons/fc";
 import Navbar from "../components/navbar";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const router = useRouter(); // Initialize router
 
   const resetMessages = () => {
     setError("");
@@ -31,7 +30,7 @@ export default function AuthPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-
+      router.push("/mockTests"); // Redirect to /mockTests on successful login
     } catch (err) {
       if (err.code === "auth/user-not-found") {
         setError("No user found with this email.");
@@ -50,6 +49,7 @@ export default function AuthPage() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
+      router.push("/mockTests"); // Redirect to /mockTests on successful Google login
     } catch {
       setError("Google login failed. Please try again.");
     }
@@ -81,9 +81,7 @@ export default function AuthPage() {
   return (
     <div>
       <Navbar />
-
       <div className="flex min-h-screen">
-
         <div className="w-1/2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-12 flex flex-col justify-center">
           <h1 className="text-4xl font-bold mb-6">JEE Mains Test Generator</h1>
           <p className="text-lg">
@@ -92,16 +90,13 @@ export default function AuthPage() {
             aspirants aiming for excellence.
           </p>
         </div>
-
         <div className="w-1/2 flex flex-col items-center justify-center p-10">
           <div className="w-full max-w-md">
             <h2 className="text-3xl font-semibold mb-6 text-gray-800 dark:text-gray-100">
               {isLogin ? "Login to Your Account" : "Create a New Account"}
             </h2>
-
             {error && <p className="mb-4 text-red-600 text-sm">{error}</p>}
             {success && <p className="mb-4 text-green-600 text-sm">{success}</p>}
-
             <form
               onSubmit={isLogin ? handleEmailLogin : handleSignUp}
               className="space-y-4"
@@ -131,13 +126,11 @@ export default function AuthPage() {
                 {isLogin ? "Login" : "Sign Up"}
               </button>
             </form>
-
             <div className="mt-6 flex items-center justify-center">
               <div className="w-full border-t"></div>
               <span className="px-4 text-gray-500">OR</span>
               <div className="w-full border-t"></div>
             </div>
-
             <button
               onClick={handleGoogleLogin}
               className="mt-6 w-full border border-gray-300 flex items-center justify-center py-2 rounded-md hover:bg-gray-100 transition"
@@ -145,11 +138,10 @@ export default function AuthPage() {
               <FcGoogle className="mr-3 text-xl" />
               Continue with Google
             </button>
-
             <p className="mt-6 text-center text-gray-600 dark:text-gray-400">
               {isLogin ? (
                 <>
-                  Don&apos;t have an account?{" "}
+                  Don't have an account?{" "}
                   <button
                     onClick={() => {
                       resetMessages();

@@ -1,6 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { auth } from "../lib/firebase-config";
+import { onAuthStateChanged } from "firebase/auth";
 import Navbar from "../components/navbar";
 
 const subjects = {
@@ -74,7 +76,40 @@ export default function CreateMockTest() {
   const [isLoading, setIsLoading] = useState(false);
   const [testCreated, setTestCreated] = useState(false);
   const [testData, setTestData] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [testHistory, setTestHistory] = useState([]);
+  const [testId, setTestId] = useState(null);
   const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setIsAuthenticated(true);
+        try {
+          const response = await fetch('http://localhost:5000/api/test-history', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userId: user.uid }),
+          });
+          const data = await response.json();
+          if (response.ok) {
+            setTestHistory(data.tests);
+          } else {
+            console.error('Failed to fetch test history:', data.error);
+          }
+        } catch (error) {
+          console.error('Error fetching test history:', error);
+        }
+      } else {
+        setIsAuthenticated(false);
+        router.push("/login");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router]);
 
   const handleSubjectToggle = (subject) => {
     if (selectedSubjects.includes(subject)) {
@@ -112,7 +147,7 @@ export default function CreateMockTest() {
         body: JSON.stringify({
           subject: subject,
           count: count,
-          topics: topics || []
+          topics: topics || [],
         }),
       });
 
@@ -134,28 +169,26 @@ export default function CreateMockTest() {
 
     try {
       let allQuestions = [];
-      let timeLimit = 180; // Default 3 hours for full test
+      let timeLimit = 180;
 
       if (testType === "full") {
-        // Generate 25 questions each for Physics, Chemistry, and Mathematics
         const physicsQuestions = await generateQuestionsForSubject("Physics", [], 25);
         const chemistryQuestions = await generateQuestionsForSubject("Chemistry", [], 25);
         const mathQuestions = await generateQuestionsForSubject("Mathematics", [], 25);
 
         allQuestions = [
-          ...physicsQuestions.map(q => ({ ...q, subject: "Physics" })),
-          ...chemistryQuestions.map(q => ({ ...q, subject: "Chemistry" })),
-          ...mathQuestions.map(q => ({ ...q, subject: "Mathematics" }))
+          ...physicsQuestions.map((q) => ({ ...q, subject: "Physics" })),
+          ...chemistryQuestions.map((q) => ({ ...q, subject: "Chemistry" })),
+          ...mathQuestions.map((q) => ({ ...q, subject: "Mathematics" })),
         ];
       } else {
-        // Custom test
         timeLimit = parseInt(customTime);
         const questionsPerSubject = Math.ceil(25 / selectedSubjects.length);
 
         for (const subject of selectedSubjects) {
           const topicsForSubject = selectedTopics[subject] || [];
           const questions = await generateQuestionsForSubject(subject, topicsForSubject, questionsPerSubject);
-          allQuestions = [...allQuestions, ...questions.map(q => ({ ...q, subject }))];
+          allQuestions = [...allQuestions, ...questions.map((q) => ({ ...q, subject }))];
         }
       }
 
@@ -164,8 +197,41 @@ export default function CreateMockTest() {
         timeLimit: timeLimit,
         testType: testType,
         subjects: testType === "full" ? ["Physics", "Chemistry", "Mathematics"] : selectedSubjects,
-        totalQuestions: allQuestions.length
+        totalQuestions: allQuestions.length,
       };
+
+      const user = auth.currentUser;
+      if (user) {
+        const response = await fetch('http://localhost:5000/api/save-test', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.uid,
+            testConfig,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setTestId(data.testId);
+          setTestHistory([
+            {
+              testId: data.testId,
+              testType: testConfig.testType,
+              subjects: testConfig.subjects,
+              totalQuestions: testConfig.totalQuestions,
+              timeLimit: testConfig.timeLimit,
+              questions: testConfig.questions,
+              createdAt: new Date().toISOString(),
+            },
+            ...testHistory,
+          ]);
+        } else {
+          console.error('Failed to save test:', await response.json());
+        }
+      }
 
       setTestData(testConfig);
       setTestCreated(true);
@@ -178,10 +244,26 @@ export default function CreateMockTest() {
   };
 
   const handleTakeTest = () => {
-    // Store test data in localStorage for the test page
+    localStorage.setItem('currentTest', JSON.stringify({ ...testData, testId }));
+    router.push('/takeTest');
+  };
+
+  const handleRetakeTest = (test) => {
+    const testData = {
+      testId: test.testId,
+      questions: test.questions,
+      timeLimit: test.timeLimit,
+      testType: test.testType,
+      subjects: test.subjects,
+      totalQuestions: test.totalQuestions,
+    };
     localStorage.setItem('currentTest', JSON.stringify(testData));
     router.push('/takeTest');
   };
+
+  if (!isAuthenticated) {
+    return <div>Loading...</div>;
+  }
 
   if (testCreated && testData) {
     return (
@@ -192,7 +274,6 @@ export default function CreateMockTest() {
             <h1 className="text-5xl font-extrabold text-center text-white mb-8">
               Test Created Successfully!
             </h1>
-            
             <div className="bg-white/20 rounded-2xl p-6 mb-8">
               <h2 className="text-2xl font-bold mb-4">Test Details:</h2>
               <div className="space-y-2 text-lg">
@@ -202,7 +283,6 @@ export default function CreateMockTest() {
                 <p><strong>Subjects:</strong> {testData.subjects.join(", ")}</p>
               </div>
             </div>
-
             <div className="text-center space-y-4">
               <button
                 onClick={handleTakeTest}
@@ -210,12 +290,12 @@ export default function CreateMockTest() {
               >
                 Take Test
               </button>
-              
               <div>
                 <button
                   onClick={() => {
                     setTestCreated(false);
                     setTestData(null);
+                    setTestId(null);
                   }}
                   className="px-6 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white font-medium transition-all duration-300"
                 >
@@ -232,14 +312,11 @@ export default function CreateMockTest() {
   return (
     <div>
       <Navbar />
-      
       <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-violet-500 to-blue-400 dark:from-gray-900 dark:to-gray-800 p-6 text-white font-sans">
-        
         <div className="max-w-5xl mx-auto bg-white/10 backdrop-blur-lg p-10 rounded-3xl shadow-2xl border border-white/20">
           <h1 className="text-5xl font-extrabold text-center text-white mb-8">
             Create a Mock Test
           </h1>
-
           <div className="flex justify-center gap-6 mb-10">
             {["full", "custom"].map((type) => (
               <button
@@ -255,7 +332,6 @@ export default function CreateMockTest() {
               </button>
             ))}
           </div>
-
           <form onSubmit={handleSubmit} className="space-y-8 text-white">
             {testType === "full" ? (
               <div className="text-center text-xl font-medium">
@@ -292,7 +368,6 @@ export default function CreateMockTest() {
                     ))}
                   </div>
                 </div>
-
                 {selectedSubjects.map((subject) => (
                   <div key={subject}>
                     <label className="block mt-6 text-xl font-semibold mb-2">
@@ -322,7 +397,6 @@ export default function CreateMockTest() {
                     </div>
                   </div>
                 ))}
-
                 <div>
                   <label className="block mt-6 text-xl font-semibold mb-2">
                     Custom Time (in minutes):
@@ -338,7 +412,6 @@ export default function CreateMockTest() {
                 </div>
               </>
             )}
-
             <div className="text-center">
               <button
                 type="submit"
@@ -353,6 +426,39 @@ export default function CreateMockTest() {
               </button>
             </div>
           </form>
+
+          <div className="mt-12">
+            <h2 className="text-3xl font-bold text-center text-white mb-6">Previous Tests</h2>
+            {testHistory.length === 0 ? (
+              <p className="text-center text-lg">No tests taken yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {testHistory.map((test) => (
+                  <div
+                    key={test.testId}
+                    className="bg-white/20 rounded-2xl p-4 text-white"
+                  >
+                    <h3 className="text-lg font-semibold">
+                      {test.testType === "full" ? "Full Test" : "Custom Test"}
+                    </h3>
+                    <p><strong>Subjects:</strong> {test.subjects.join(", ")}</p>
+                    <p><strong>Total Questions:</strong> {test.totalQuestions}</p>
+                    <p><strong>Time Limit:</strong> {test.timeLimit} minutes</p>
+                    <p><strong>Created:</strong> {new Date(test.createdAt).toLocaleDateString()}</p>
+                    {test.score !== undefined && (
+                      <p><strong>Score:</strong> {test.score}/{test.total} ({test.percentage}%)</p>
+                    )}
+                    <button
+                      onClick={() => handleRetakeTest(test)}
+                      className="mt-3 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold transition-all"
+                    >
+                      Retake Test
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

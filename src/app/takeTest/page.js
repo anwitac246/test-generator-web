@@ -20,22 +20,19 @@ export default function TakeTest() {
     if (storedTest) {
       const parsedTest = JSON.parse(storedTest);
       setTestData(parsedTest);
-      setTimeLeft(parsedTest.timeLimit * 60); // Convert minutes to seconds
+      setTimeLeft(parsedTest.timeLimit * 60);
     } else {
-      // If no test data, redirect back to create test
       router.push('/mockTests');
     }
   }, [router]);
 
   useEffect(() => {
-    // Timer countdown
     if (timeLeft > 0 && !testCompleted) {
       const timer = setTimeout(() => {
         setTimeLeft(timeLeft - 1);
       }, 1000);
       return () => clearTimeout(timer);
     } else if (timeLeft === 0 && !testCompleted) {
-      // Time's up, submit test automatically
       handleSubmitTest();
     }
   }, [timeLeft, testCompleted]);
@@ -49,41 +46,35 @@ export default function TakeTest() {
 
   const getQuestionsBySubject = () => {
     if (!testData) return [];
-    
     if (currentSubject === "All") {
       return testData.questions;
     }
-    
-    return testData.questions.filter(q => q.subject === currentSubject);
+    return testData.questions.filter((q) => q.subject === currentSubject);
   };
 
   const getSubjectWiseQuestions = () => {
     if (!testData) return {};
-    
     const subjectWise = {};
-    const subjects = [...new Set(testData.questions.map(q => q.subject))];
-    
-    subjects.forEach(subject => {
-      subjectWise[subject] = testData.questions.filter(q => q.subject === subject);
+    const subjects = [...new Set(testData.questions.map((q) => q.subject))];
+    subjects.forEach((subject) => {
+      subjectWise[subject] = testData.questions.filter((q) => q.subject === subject);
     });
-    
     return subjectWise;
   };
 
   const handleAnswerSelect = (questionIndex, answer) => {
-    const globalIndex = currentSubject === "All" ? 
-      questionIndex : 
-      testData.questions.findIndex(q => q === getQuestionsBySubject()[questionIndex]);
-    
+    const globalIndex =
+      currentSubject === "All"
+        ? questionIndex
+        : testData.questions.findIndex((q) => q === getQuestionsBySubject()[questionIndex]);
     setUserAnswers({
       ...userAnswers,
-      [globalIndex]: answer
+      [globalIndex]: answer,
     });
   };
 
   const handleSubmitTest = async () => {
     setIsLoading(true);
-    
     try {
       const response = await fetch('http://localhost:5000/api/evaluate', {
         method: 'POST',
@@ -92,13 +83,29 @@ export default function TakeTest() {
         },
         body: JSON.stringify({
           questions: testData.questions,
-          userAnswers: testData.questions.map((_, index) => userAnswers[index] || "")
+          userAnswers: testData.questions.map((_, index) => userAnswers[index] || ""),
         }),
       });
 
       if (response.ok) {
         const results = await response.json();
         setTestResults(results);
+
+        // Save test results to MongoDB
+        const user = auth.currentUser;
+        if (user && testData.testId) {
+          await fetch('http://localhost:5000/api/save-test-result', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: user.uid,
+              testId: testData.testId,
+              results,
+            }),
+          });
+        }
       } else {
         throw new Error('Failed to evaluate test');
       }
@@ -113,26 +120,21 @@ export default function TakeTest() {
 
   const getSubjectStats = () => {
     if (!testResults || !testData) return {};
-    
     const subjectStats = {};
-    const subjects = [...new Set(testData.questions.map(q => q.subject))];
-    
-    subjects.forEach(subject => {
+    const subjects = [...new Set(testData.questions.map((q) => q.subject))];
+    subjects.forEach((subject) => {
       const subjectQuestions = testData.questions
         .map((q, index) => ({ question: q, index }))
-        .filter(item => item.question.subject === subject);
-      
-      const correctAnswers = subjectQuestions.filter(item => 
-        testResults.details[item.index]?.is_correct
+        .filter((item) => item.question.subject === subject);
+      const correctAnswers = subjectQuestions.filter(
+        (item) => testResults.details[item.index]?.is_correct
       ).length;
-      
       subjectStats[subject] = {
         total: subjectQuestions.length,
         correct: correctAnswers,
-        percentage: ((correctAnswers / subjectQuestions.length) * 100).toFixed(1)
+        percentage: ((correctAnswers / subjectQuestions.length) * 100).toFixed(1),
       };
     });
-    
     return subjectStats;
   };
 
@@ -146,14 +148,12 @@ export default function TakeTest() {
 
   if (testCompleted && testResults) {
     const subjectStats = getSubjectStats();
-    
     return (
       <div>
         <Navbar />
         <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-violet-500 to-blue-400 p-6 text-white">
           <div className="max-w-4xl mx-auto bg-white/10 backdrop-blur-lg p-8 rounded-3xl shadow-2xl">
             <h1 className="text-4xl font-extrabold text-center mb-8">Test Results</h1>
-            
             <div className="bg-white/20 rounded-2xl p-6 mb-6">
               <div className="text-center mb-6">
                 <div className="text-6xl font-bold text-green-300 mb-2">
@@ -163,7 +163,6 @@ export default function TakeTest() {
                   Overall Score: {((testResults.score / testResults.total) * 100).toFixed(1)}%
                 </div>
               </div>
-              
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {Object.entries(subjectStats).map(([subject, stats]) => (
                   <div key={subject} className="bg-white/10 rounded-lg p-4 text-center">
@@ -174,7 +173,6 @@ export default function TakeTest() {
                 ))}
               </div>
             </div>
-            
             <div className="text-center space-x-4">
               <button
                 onClick={() => router.push('/mockTests')}
@@ -202,14 +200,11 @@ export default function TakeTest() {
     <div>
       <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-violet-500 to-blue-400 p-4 text-white">
-        
-        {/* Header with timer and navigation */}
         <div className="max-w-6xl mx-auto mb-4">
           <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 flex justify-between items-center">
             <div className="text-xl font-semibold">
               Time Left: <span className="text-red-300">{formatTime(timeLeft)}</span>
             </div>
-            
             <div className="flex gap-2">
               <button
                 onClick={() => setCurrentSubject("All")}
@@ -219,7 +214,7 @@ export default function TakeTest() {
               >
                 All
               </button>
-              {testData.subjects.map(subject => (
+              {testData.subjects.map((subject) => (
                 <button
                   key={subject}
                   onClick={() => {
@@ -234,7 +229,6 @@ export default function TakeTest() {
                 </button>
               ))}
             </div>
-            
             <button
               onClick={handleSubmitTest}
               disabled={isLoading}
@@ -244,10 +238,7 @@ export default function TakeTest() {
             </button>
           </div>
         </div>
-
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-4">
-          
-          {/* Question navigation panel */}
           <div className="lg:col-span-1">
             <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4">
               <h3 className="text-lg font-semibold mb-3">
@@ -255,22 +246,21 @@ export default function TakeTest() {
               </h3>
               <div className="grid grid-cols-5 lg:grid-cols-4 gap-2 max-h-96 overflow-y-auto">
                 {currentQuestions.map((_, index) => {
-                  const globalIndex = currentSubject === "All" ? 
-                    index : 
-                    testData.questions.findIndex(q => q === currentQuestions[index]);
-                  
+                  const globalIndex =
+                    currentSubject === "All"
+                      ? index
+                      : testData.questions.findIndex((q) => q === currentQuestions[index]);
                   const isAnswered = userAnswers.hasOwnProperty(globalIndex);
                   const isCurrent = index === currentQuestionIndex;
-                  
                   return (
                     <button
                       key={index}
                       onClick={() => setCurrentQuestionIndex(index)}
                       className={`w-8 h-8 rounded text-sm font-medium transition-colors ${
-                        isCurrent 
-                          ? "bg-blue-500 text-white" 
-                          : isAnswered 
-                          ? "bg-green-500 text-white" 
+                        isCurrent
+                          ? "bg-blue-500 text-white"
+                          : isAnswered
+                          ? "bg-green-500 text-white"
                           : "bg-white/20 hover:bg-white/30"
                       }`}
                     >
@@ -281,8 +271,6 @@ export default function TakeTest() {
               </div>
             </div>
           </div>
-
-          {/* Main question area */}
           <div className="lg:col-span-3">
             <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6">
               {currentQuestion ? (
@@ -295,28 +283,25 @@ export default function TakeTest() {
                       Question {currentQuestionIndex + 1} of {currentQuestions.length}
                     </span>
                   </div>
-
                   <div className="mb-6">
                     <h2 className="text-xl font-semibold mb-4">{currentQuestion.question}</h2>
-                    
                     {currentQuestion.image_data && (
                       <div className="mb-4">
-                        <img 
-                          src={currentQuestion.image_data} 
-                          alt="Question diagram" 
+                        <img
+                          src={currentQuestion.image_data}
+                          alt="Question diagram"
                           className="max-w-full h-auto rounded-lg"
                         />
                       </div>
                     )}
                   </div>
-
                   <div className="space-y-3 mb-6">
                     {currentQuestion.options.map((option, optionIndex) => {
-                      const optionLabel = String.fromCharCode(65 + optionIndex); // A, B, C, D
-                      const globalIndex = currentSubject === "All" ? 
-                        currentQuestionIndex : 
-                        testData.questions.findIndex(q => q === currentQuestion);
-                      
+                      const optionLabel = String.fromCharCode(65 + optionIndex);
+                      const globalIndex =
+                        currentSubject === "All"
+                          ? currentQuestionIndex
+                          : testData.questions.findIndex((q) => q === currentQuestion);
                       return (
                         <label
                           key={optionIndex}
@@ -340,7 +325,6 @@ export default function TakeTest() {
                       );
                     })}
                   </div>
-
                   <div className="flex justify-between">
                     <button
                       onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
@@ -349,9 +333,12 @@ export default function TakeTest() {
                     >
                       Previous
                     </button>
-                    
                     <button
-                      onClick={() => setCurrentQuestionIndex(Math.min(currentQuestions.length - 1, currentQuestionIndex + 1))}
+                      onClick={() =>
+                        setCurrentQuestionIndex(
+                          Math.min(currentQuestions.length - 1, currentQuestionIndex + 1)
+                        )
+                      }
                       disabled={currentQuestionIndex === currentQuestions.length - 1}
                       className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
