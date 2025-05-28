@@ -1,19 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { auth } from '../lib/firebase-config';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+      setMenuOpen(false);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b bg-white dark:bg-gray-900 dark:border-gray-700 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-
         <Link href="/" className="text-2xl font-extrabold text-blue-600 dark:text-blue-400">
           JEE Ace
         </Link>
-
         <nav className="hidden md:flex space-x-8 text-gray-700 dark:text-gray-300 font-medium">
           <Link
             href="/dashboard"
@@ -46,16 +66,25 @@ const Navbar = () => {
             Leaderboard
           </Link>
         </nav>
-
-        <div className="hidden md:flex">
-          <Link
-            href="/login"
-            className="px-5 py-2 rounded-md border border-blue-600 text-blue-600 font-semibold hover:bg-blue-600 hover:text-white dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-400 dark:hover:text-gray-900 transition"
-          >
-            Login
-          </Link>
+        <div className="hidden md:flex items-center space-x-4">
+          {user ? (
+            <>
+              <button
+                onClick={handleLogout}
+                className="px-5 py-2 rounded-md border border-red-600 text-red-600 font-semibold hover:bg-red-600 hover:text-white dark:border-red-400 dark:text-red-400 dark:hover:bg-red-400 dark:hover:text-gray-900 transition"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              className="px-5 py-2 rounded-md border border-blue-600 text-blue-600 font-semibold hover:bg-blue-600 hover:text-white dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-400 dark:hover:text-gray-900 transition"
+            >
+              Login
+            </Link>
+          )}
         </div>
-
         <button
           onClick={() => setMenuOpen(!menuOpen)}
           className="md:hidden text-gray-700 dark:text-gray-300 focus:outline-none"
@@ -92,10 +121,9 @@ const Navbar = () => {
           )}
         </button>
       </div>
-
       {menuOpen && (
         <div className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 py-4 space-y-3">
-          {['dashboard', 'mockTests', 'question-bank', 'notes', 'leaderboard'].map(
+          {['dashboard', 'mockTests', 'question-bank', 'quickNotes', 'leaderboard'].map(
             (page) => (
               <Link
                 key={page}
@@ -110,14 +138,24 @@ const Navbar = () => {
               </Link>
             )
           )}
-
-          <Link
-            href="/login"
-            className="block mt-3 text-center border border-blue-600 text-blue-600 rounded-md py-2 font-semibold hover:bg-blue-600 hover:text-white dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-400 dark:hover:text-gray-900 transition"
-            onClick={() => setMenuOpen(false)}
-          >
-            Login
-          </Link>
+          {user ? (
+            <>
+              <button
+                onClick={handleLogout}
+                className="block mt-3 text-center border border-red-600 text-red-600 rounded-md py-2 font-semibold hover:bg-red-600 hover:text-white dark:border-red-400 dark:text-red-400 dark:hover:bg-red-400 dark:hover:text-gray-900 transition"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              className="block mt-3 text-center border border-blue-600 text-blue-600 rounded-md py-2 font-semibold hover:bg-blue-600 hover:text-white dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-400 dark:hover:text-gray-900 transition"
+              onClick={() => setMenuOpen(false)}
+            >
+              Login
+            </Link>
+          )}
         </div>
       )}
     </header>
