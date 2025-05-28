@@ -11,6 +11,12 @@ from sentence_transformers import SentenceTransformer
 from PIL import Image as PILImage
 import requests
 import re
+from dotenv import load_dotenv
+from sklearn.metrics.pairwise import cosine_similarity
+import json
+
+dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(dotenv_path)
 
 app = Flask(__name__)
 CORS(app)
@@ -20,14 +26,21 @@ output_dir = "./pdf_images"
 os.makedirs(output_dir, exist_ok=True)
 os.makedirs(pdf_folder, exist_ok=True)
 
+# Use a more powerful sentence transformer for better semantic understanding
 embedder = SentenceTransformer('all-MiniLM-L6-v2')
 
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "llama3-8b-8192"
 
-faiss_index = faiss.IndexFlatL2(384)
-data = []
+# Separate FAISS indices for questions and images
+question_faiss_index = faiss.IndexFlatL2(384)
+image_faiss_index = faiss.IndexFlatL2(384)
+
+# Enhanced data structures
+questions_data = []  # Store extracted questions with metadata
+images_data = []     # Store extracted images with metadata
+question_image_associations = []  # Store associations between questions and images
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -45,13 +58,17 @@ def upload_pdf():
     pdf_path = os.path.join(pdf_folder, file.filename)
     file.save(pdf_path)
     
-    extracted_data = extract_pdf_data(pdf_path, output_dir)
+    # Enhanced extraction with better question-image association
+    extracted_questions, extracted_images, associations = extract_pdf_data_enhanced(pdf_path, output_dir)
     
-    ids = store_data_to_faiss(extracted_data)
+    # Store data with associations
+    store_enhanced_data_to_faiss(extracted_questions, extracted_images, associations)
     
     return jsonify({
         "message": "PDF processed successfully",
-        "extracted_items": len(extracted_data),
+        "questions_extracted": len(extracted_questions),
+        "images_extracted": len(extracted_images),
+        "associations_found": len(associations),
         "pdf_name": file.filename
     }), 200
 
@@ -62,70 +79,56 @@ def generate_questions_api():
     topics = request.json.get('topics', [])
     topic_filter = topics[0] if topics else None
 
-    filtered_data = []
-    for item in data:
-        subj = item.get('subject')
-        caption = item.get('caption', '')
-        context_text = item.get('text', '')[:1000]
-        if not subj or len(caption.strip()) < 30:
-            continue
-        if subject != 'All' and subj != subject:
-            continue
-        if topic_filter and topic_filter.lower() not in caption.lower() and topic_filter.lower() not in context_text.lower():
-            continue
-        filtered_data.append(item)
+    # Use RAG to find relevant questions
+    if topic_filter:
+        relevant_questions = retrieve_relevant_questions(topic_filter, subject, count * 2)
+    else:
+        relevant_questions = filter_questions_by_subject(subject, count * 2)
 
-    print(f"[API] Filtered data count: {len(filtered_data)}")
-    if filtered_data:
-        print(f"[API] First item caption: {filtered_data[0].get('caption', '')[:60]}")
-        print(f"[API] First item text: {filtered_data[0].get('text', '')[:60]}")
-
-    if not filtered_data:
-        return jsonify({"error": f"No data available for subject: {subject}"}), 404
-
-    questions = []
-    for item in filtered_data:
-        if len(questions) >= count:
-            break
-        subj = item.get("subject")
-        caption = item.get("caption", "")
-        context_text = item.get("text", "")[:1000]
-        raw_mcq = generate_question_from_caption(caption, subj)
-        if not raw_mcq:
-            continue
-        rephrased_mcq = rephrase_question_with_context(raw_mcq, context_text)
-
-        parsed_mcq = parse_mcq_string(rephrased_mcq)
-
-        questions.append({
-            "question": parsed_mcq["question"],
-            "options": parsed_mcq["options"],
-            "answer": parsed_mcq["answer"],
-            "caption": caption,
-            "image_path": item.get("image_path"),
-            "subject": subj
-        })
-
-    for q in questions:
-        if q.get("image_path") and os.path.exists(q["image_path"]):
-            try:
-                with open(q["image_path"], "rb") as img_file:
-                    img_data = base64.b64encode(img_file.read()).decode('utf-8')
-                    q["image_data"] = f"data:image/jpeg;base64,{img_data}"
-                del q["image_path"]
-            except Exception as e:
-                q["error"] = f"Could not encode image: {str(e)}"
+    generated_questions = []
+    
+    for question_data in relevant_questions[:count]:
+        # Generate MCQ from the question text
+        mcq = generate_enhanced_mcq(question_data)
+        
+        if mcq:
+            # Find associated image if any
+            associated_image = find_associated_image(question_data['id'])
+            
+            question_obj = {
+                "question": mcq["question"],
+                "options": mcq["options"][:4],
+                "answer": mcq["answer"],
+                "subject": question_data.get("subject"),
+                "source_text": question_data.get("text", "")[:200] + "...",
+                "page": question_data.get("page"),
+                "pdf_source": question_data.get("source_pdf")
+            }
+            
+            # Add image data if associated image exists
+            if associated_image and os.path.exists(associated_image.get("image_path", "")):
+                try:
+                    with open(associated_image["image_path"], "rb") as img_file:
+                        img_data = base64.b64encode(img_file.read()).decode('utf-8')
+                        question_obj["image_data"] = f"data:image/jpeg;base64,{img_data}"
+                        question_obj["image_caption"] = associated_image.get("caption", "")
+                except Exception as e:
+                    question_obj["image_error"] = f"Could not load image: {str(e)}"
+            
+            generated_questions.append(question_obj)
 
     return jsonify({
-        "questions": questions,
+        "questions": generated_questions,
         "subject": subject,
-        "count": len(questions)
+        "count": len(generated_questions),
+        "total_questions_in_db": len(questions_data),
+        "total_images_in_db": len(images_data)
     }), 200
 
 @app.route('/api/subjects', methods=['GET'])
 def get_subjects():
     subjects = set()
-    for item in data:
+    for item in questions_data:
         if item.get("subject"):
             subjects.add(item["subject"])
     
@@ -133,9 +136,15 @@ def get_subjects():
         "subjects": list(subjects)
     }), 200
 
-def extract_pdf_data(pdf_path, output_dir):
-    extracted_data = []
+def extract_pdf_data_enhanced(pdf_path, output_dir):
+    """Enhanced PDF extraction with better question-image association"""
     doc = fitz.open(pdf_path)
+    filename = os.path.basename(pdf_path)
+    
+    extracted_questions = []
+    extracted_images = []
+    associations = []
+    
     current_subject = None
     
     for page_num in range(len(doc)):
@@ -143,150 +152,282 @@ def extract_pdf_data(pdf_path, output_dir):
         text = page.get_text()
         lower_text = text.lower()
         
+        # Subject detection
         if "physics" in lower_text:
             current_subject = "Physics"
         elif "chemistry" in lower_text:
             current_subject = "Chemistry"
         elif "math" in lower_text or "mathematics" in lower_text:
             current_subject = "Mathematics"
+        elif "biology" in lower_text:
+            current_subject = "Biology"
         
+        # Extract text blocks with positions
+        text_blocks = page.get_text("dict")
+        
+        # Extract questions from text
+        questions_on_page = extract_questions_from_text(text, page_num, filename, current_subject)
+        extracted_questions.extend(questions_on_page)
+        
+        # Extract images with enhanced metadata
         for img_index, img in enumerate(page.get_images(full=True)):
             xref = img[0]
             base_image = doc.extract_image(xref)
             image_bytes = base_image["image"]
             image_ext = base_image["ext"]
-            filename = os.path.basename(pdf_path)
+            
             image_filename = f"{filename}_p{page_num+1}_img{img_index+1}.{image_ext}"
             image_path = os.path.join(output_dir, image_filename)
             
             with open(image_path, "wb") as f:
                 f.write(image_bytes)
             
-            words = page.get_text("words")
-            caption = " ".join([w[4] for w in words if abs(w[1] - img[1]) < 100])
+            # Get image position and surrounding text
+            img_rect = fitz.Rect(img[1:5])  # Image rectangle
             
-            if len(caption.strip()) > 30:
-                item_data = {
-                    "subject": current_subject,
-                    "source_pdf": filename,
+            # Find text near the image (within reasonable distance)
+            nearby_text = extract_text_near_image(page, img_rect, distance_threshold=100)
+            
+            image_data = {
+                "id": str(uuid.uuid4()),
+                "image_path": image_path,
+                "page": page_num + 1,
+                "source_pdf": filename,
+                "subject": current_subject,
+                "position": {
+                    "x": img_rect.x0,
+                    "y": img_rect.y0,
+                    "width": img_rect.width,
+                    "height": img_rect.height
+                },
+                "caption": nearby_text,
+                "surrounding_text": text  # Full page text for context
+            }
+            
+            extracted_images.append(image_data)
+            
+            # Associate with questions on the same page
+            for question in questions_on_page:
+                similarity_score = calculate_text_similarity(question["text"], nearby_text)
+                if similarity_score > 0.3:  # Threshold for association
+                    associations.append({
+                        "question_id": question["id"],
+                        "image_id": image_data["id"],
+                        "similarity_score": similarity_score,
+                        "association_type": "semantic"
+                    })
+    
+    doc.close()
+    return extracted_questions, extracted_images, associations
+
+def extract_questions_from_text(text, page_num, filename, subject):
+    """Extract potential questions from text using patterns"""
+    questions = []
+    
+    # Common question patterns in JEE materials
+    question_patterns = [
+        r'(\d+\.\s+.*?(?=\d+\.\s+|\n\n|\Z))',  # Numbered questions
+        r'(Q\d+\.\s+.*?(?=Q\d+\.\s+|\n\n|\Z))',  # Q1, Q2 format
+        r'(\(\d+\)\s+.*?(?=\(\d+\)|\n\n|\Z))',  # (1), (2) format
+        r'(Example\s+\d+.*?(?=Example\s+\d+|\n\n|\Z))',  # Example questions
+    ]
+    
+    for i, pattern in enumerate(question_patterns):
+        matches = re.findall(pattern, text, re.DOTALL | re.IGNORECASE)
+        for match in matches:
+            if len(match.strip()) > 50:  # Filter out very short matches
+                question_data = {
+                    "id": str(uuid.uuid4()),
+                    "text": match.strip(),
                     "page": page_num + 1,
-                    "text": text,
-                    "image_path": image_path,
-                    "caption": caption
+                    "source_pdf": filename,
+                    "subject": subject,
+                    "extraction_pattern": i,
+                    "word_count": len(match.split())
                 }
-                extracted_data.append(item_data)
-                data.append(item_data)  
+                questions.append(question_data)
     
-    return extracted_data
+    return questions
 
-def store_data_to_faiss(extracted_data):
-    ids = []
-    embeddings = []
+def extract_text_near_image(page, img_rect, distance_threshold=100):
+    """Extract text near an image based on spatial proximity"""
+    words = page.get_text("words")
+    nearby_words = []
     
-    for item in extracted_data:
-        if item.get('subject'):
-            embedding = embedder.encode(item["caption"])
-            embeddings.append(embedding)
-            ids.append(str(uuid.uuid4()))
+    for word in words:
+        word_rect = fitz.Rect(word[:4])
+        
+        # Calculate distance between word and image
+        distance = min(
+            abs(word_rect.x0 - img_rect.x1),  # Distance to right of image
+            abs(word_rect.x1 - img_rect.x0),  # Distance to left of image
+            abs(word_rect.y0 - img_rect.y1),  # Distance below image
+            abs(word_rect.y1 - img_rect.y0)   # Distance above image
+        )
+        
+        if distance <= distance_threshold:
+            nearby_words.append(word[4])  # word[4] is the text content
     
-    if embeddings:
-        embeddings_np = np.array(embeddings, dtype='float32')
-        if len(embeddings_np.shape) == 1:
-            embeddings_np = embeddings_np.reshape(1, -1)
-        faiss_index.add(embeddings_np)
-    
-    return ids
+    return " ".join(nearby_words)
 
-def generate_question_from_caption(caption, subject):
+def calculate_text_similarity(text1, text2):
+    """Calculate semantic similarity between two texts"""
+    if not text1 or not text2:
+        return 0.0
+    
+    try:
+        embeddings = embedder.encode([text1, text2])
+        similarity = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
+        return float(similarity)
+    except:
+        return 0.0
+
+def store_enhanced_data_to_faiss(questions, images, associations):
+    """Store questions and images in separate FAISS indices"""
+    global questions_data, images_data, question_image_associations
+    
+    # Store questions
+    if questions:
+        question_embeddings = []
+        for question in questions:
+            embedding = embedder.encode(question["text"])
+            question_embeddings.append(embedding)
+            questions_data.append(question)
+        
+        if question_embeddings:
+            embeddings_np = np.array(question_embeddings, dtype='float32')
+            question_faiss_index.add(embeddings_np)
+    
+    # Store images
+    if images:
+        image_embeddings = []
+        for image in images:
+            # Embed image caption and surrounding text
+            text_to_embed = f"{image.get('caption', '')} {image.get('surrounding_text', '')[:500]}"
+            embedding = embedder.encode(text_to_embed)
+            image_embeddings.append(embedding)
+            images_data.append(image)
+        
+        if image_embeddings:
+            embeddings_np = np.array(image_embeddings, dtype='float32')
+            image_faiss_index.add(embeddings_np)
+    
+    # Store associations
+    question_image_associations.extend(associations)
+
+def retrieve_relevant_questions(query, subject, k=10):
+    """Retrieve relevant questions using RAG"""
+    if not questions_data:
+        return []
+    
+    query_embedding = embedder.encode([query])
+    
+    # Search in question index
+    distances, indices = question_faiss_index.search(query_embedding.astype('float32'), min(k*2, len(questions_data)))
+    
+    relevant_questions = []
+    for idx in indices[0]:
+        if idx < len(questions_data):
+            question = questions_data[idx]
+            if subject == 'All' or question.get('subject') == subject:
+                relevant_questions.append(question)
+    
+    return relevant_questions[:k]
+
+def filter_questions_by_subject(subject, k=10):
+    """Filter questions by subject when no specific query is provided"""
+    filtered_questions = []
+    for question in questions_data:
+        if subject == 'All' or question.get('subject') == subject:
+            filtered_questions.append(question)
+    
+    return filtered_questions[:k]
+
+def find_associated_image(question_id):
+    """Find image associated with a question"""
+    for association in question_image_associations:
+        if association["question_id"] == question_id:
+            image_id = association["image_id"]
+            for image in images_data:
+                if image["id"] == image_id:
+                    return image
+    return None
+
+def generate_enhanced_mcq(question_data):
+    """Generate MCQ from question data with better context"""
+    text = question_data.get("text", "")
+    subject = question_data.get("subject", "")
+    
     prompt = f"""
-You are an expert JEE {subject} tutor. Based on the following figure caption, generate one meaningful and original MCQ with 4 options and clearly state the correct answer.
+You are an expert JEE {subject} tutor. Based on the following question/content from a JEE preparation material, generate one high-quality multiple-choice question with exactly 4 options.
 
-Caption:
-{caption}
+Content:
+{text}
+
+Requirements:
+- Create a challenging question suitable for JEE Main level
+- Provide exactly 4 options labeled A, B, C, D
+- Make options plausible but only one correct
+- Test conceptual understanding and problem-solving
+- If the content contains a specific question, adapt it into MCQ format
+- If the content is explanatory, create a question that tests the concept
 
 Format:
-Q: ...
-A. ...
-B. ...
-C. ...
-D. ...
-Answer: ...
+Q: [Your question here]
+A. [Option A]
+B. [Option B]  
+C. [Option C]
+D. [Option D]
+Answer: [A/B/C/D]
 """
-    response = requests.post(
-        GROQ_API_URL,
-        headers={
-            'Authorization': f'Bearer {GROQ_API_KEY}',
-            'Content-Type': 'application/json'
-        },
-        json={
-            'model': GROQ_MODEL,
-            'messages': [{'role': 'user', 'content': prompt}],
-            'temperature': 0.7,
-            'max_tokens': 256
-        }
-    )
     
     try:
-        response_data = response.json()
-        if "choices" not in response_data or not response_data["choices"]:
-            print(f"No choices in response for caption: {caption[:50]}")
-            return None
-        return response_data["choices"][0]["message"]["content"].strip()
+        response = requests.post(
+            GROQ_API_URL,
+            headers={
+                'Authorization': f'Bearer {GROQ_API_KEY}',
+                'Content-Type': 'application/json'
+            },
+            json={
+                'model': GROQ_MODEL,
+                'messages': [{'role': 'user', 'content': prompt}],
+                'temperature': 0.7,
+                'max_tokens': 400
+            }
+        )
+        
+        if response.status_code == 200:
+            response_data = response.json()
+            if "choices" in response_data and response_data["choices"]:
+                mcq_text = response_data["choices"][0]["message"]["content"].strip()
+                return parse_mcq_string(mcq_text)
     except Exception as e:
-        print(f"Error: {e}")
-        return None
-
-def rephrase_question_with_context(question, context):
-    prompt = f"""
-The following is a multiple-choice question:
-
-{question}
-
-Based on the following context, rephrase the question only to better align it with the content, keeping the options and answer the same.
-
-Context:
-{context}
-"""
-    response = requests.post(
-        GROQ_API_URL,
-        headers={
-            'Authorization': f'Bearer {GROQ_API_KEY}',
-            'Content-Type': 'application/json'
-        },
-        json={
-            'model': GROQ_MODEL,
-            'messages': [{'role': 'user', 'content': prompt}],
-            'temperature': 0.7,
-            'max_tokens': 256
-        }
-    )
+        print(f"Error generating MCQ: {e}")
     
-    try:
-        response_data = response.json()
-        if "choices" not in response_data or not response_data["choices"]:
-            return question
-        return response_data["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        print(f"Error during rephrasing: {e}")
-        return question
+    return None
 
 def parse_mcq_string(mcq_str):
-    # Extract question (after Q: and before A.)
-    q_match = re.search(r'Q:\s*(.*?)\s*A\.', mcq_str, re.DOTALL)
+    """Parse MCQ string into structured format"""
+    # Extract question
+    q_match = re.search(r'Q:\s*(.*?)\s*(?=A\.)', mcq_str, re.DOTALL)
     question = q_match.group(1).strip() if q_match else ""
 
-    # Extract options A-D
+    # Extract options
     options = []
     for option_letter in ['A', 'B', 'C', 'D']:
-        pattern = rf'{option_letter}\.\s*(.*)'
-        match = re.search(pattern, mcq_str)
+        if option_letter == 'D':
+            pattern = rf'{option_letter}\.\s*(.*?)(?=Answer:|\Z)'
+        else:
+            next_letter = chr(ord(option_letter) + 1)
+            pattern = rf'{option_letter}\.\s*(.*?)(?={next_letter}\.)'
+        
+        match = re.search(pattern, mcq_str, re.DOTALL)
         if match:
-            # Remove trailing newlines/spaces from option text
-            option_text = match.group(1).strip().split('\n')[0]
+            option_text = match.group(1).strip().split('\n')[0].strip()
             options.append(option_text)
-    
+
     # Extract answer
-    ans_match = re.search(r'Answer:\s*(.*)', mcq_str)
+    ans_match = re.search(r'Answer:\s*([ABCD])', mcq_str)
     answer = ans_match.group(1).strip() if ans_match else ""
 
     return {
@@ -297,9 +438,9 @@ def parse_mcq_string(mcq_str):
 
 @app.route('/api/evaluate', methods=['POST'])
 def evaluate():
-    data = request.json
-    questions = data.get("questions", [])
-    user_answers = data.get("userAnswers", [])
+    request_data = request.json
+    questions = request_data.get("questions", [])
+    user_answers = request_data.get("userAnswers", [])
     
     if not questions or not user_answers or len(questions) != len(user_answers):
         return jsonify({"error": "Invalid input"}), 400
@@ -307,35 +448,69 @@ def evaluate():
     score = 0
     detailed_results = []
 
-    for q, ua in zip(questions, user_answers):
-        correct = q.get("answer") == ua
-        if correct:
+    for i, (q, ua) in enumerate(zip(questions, user_answers)):
+        correct_answer = q.get("answer", "").strip().upper()
+        user_answer = ua.strip().upper() if ua else ""
+        is_correct = correct_answer == user_answer
+        
+        if is_correct:
             score += 1
+            
         detailed_results.append({
             "question": q.get("question"),
-            "correct_answer": q.get("answer"),
-            "user_answer": ua,
-            "is_correct": correct
+            "correct_answer": correct_answer,
+            "user_answer": user_answer,
+            "is_correct": is_correct,
+            "subject": q.get("subject", "Unknown")
         })
 
     return jsonify({
         "total": len(questions),
         "score": score,
+        "percentage": round((score / len(questions)) * 100, 2),
         "details": detailed_results
     }), 200
 
+@app.route('/api/stats', methods=['GET'])
+def get_stats():
+    """Get statistics about the processed data"""
+    subject_counts = {}
+    for question in questions_data:
+        subject = question.get('subject', 'Unknown')
+        subject_counts[subject] = subject_counts.get(subject, 0) + 1
+    
+    return jsonify({
+        "total_questions": len(questions_data),
+        "total_images": len(images_data),
+        "total_associations": len(question_image_associations),
+        "subject_distribution": subject_counts,
+        "questions_with_images": len([a for a in question_image_associations])
+    }), 200
 
 def process_all_pdfs_on_startup():
+    """Process all existing PDFs on startup"""
     print("Processing all existing PDFs in folder...")
-    global data
-    data.clear() 
+    global questions_data, images_data, question_image_associations
+    
+    # Clear existing data
+    questions_data.clear()
+    images_data.clear()
+    question_image_associations.clear()
+    
     for filename in os.listdir(pdf_folder):
         if filename.lower().endswith('.pdf'):
             pdf_path = os.path.join(pdf_folder, filename)
-            print(f"Processing {filename} ...")
-            extracted_data = extract_pdf_data(pdf_path, output_dir)
-            store_data_to_faiss(extracted_data)
-    print(f"Finished processing PDFs on startup. Total items: {len(data)}")
+            print(f"Processing {filename}...")
+            try:
+                extracted_questions, extracted_images, associations = extract_pdf_data_enhanced(pdf_path, output_dir)
+                store_enhanced_data_to_faiss(extracted_questions, extracted_images, associations)
+                print(f"  - Questions: {len(extracted_questions)}")
+                print(f"  - Images: {len(extracted_images)}")
+                print(f"  - Associations: {len(associations)}")
+            except Exception as e:
+                print(f"Error processing {filename}: {e}")
+    
+    print(f"Finished processing PDFs. Total: {len(questions_data)} questions, {len(images_data)} images, {len(question_image_associations)} associations")
 
 if __name__ == '__main__':
     process_all_pdfs_on_startup()

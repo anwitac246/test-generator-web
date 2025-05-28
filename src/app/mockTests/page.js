@@ -1,6 +1,8 @@
 "use client";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "../components/navbar";
+
 const subjects = {
   Physics: [
     "Units and Measurements",
@@ -69,6 +71,10 @@ export default function CreateMockTest() {
   const [selectedSubjects, setSelectedSubjects] = useState([]);
   const [selectedTopics, setSelectedTopics] = useState({});
   const [customTime, setCustomTime] = useState(60);
+  const [isLoading, setIsLoading] = useState(false);
+  const [testCreated, setTestCreated] = useState(false);
+  const [testData, setTestData] = useState(null);
+  const router = useRouter();
 
   const handleSubjectToggle = (subject) => {
     if (selectedSubjects.includes(subject)) {
@@ -96,140 +102,259 @@ export default function CreateMockTest() {
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (testType === "full") {
-      console.log("Creating Full Test: 25 questions per subject, 180 mins");
-    } else {
-      console.log("Creating Custom Test with settings:", {
-        subjects: selectedSubjects,
-        topics: selectedTopics,
-        customTime,
+  const generateQuestionsForSubject = async (subject, topics, count) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/generate-questions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subject: subject,
+          count: count,
+          topics: topics || []
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate questions for ${subject}`);
+      }
+
+      const data = await response.json();
+      return data.questions || [];
+    } catch (error) {
+      console.error(`Error generating questions for ${subject}:`, error);
+      return [];
     }
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      let allQuestions = [];
+      let timeLimit = 180; // Default 3 hours for full test
+
+      if (testType === "full") {
+        // Generate 25 questions each for Physics, Chemistry, and Mathematics
+        const physicsQuestions = await generateQuestionsForSubject("Physics", [], 25);
+        const chemistryQuestions = await generateQuestionsForSubject("Chemistry", [], 25);
+        const mathQuestions = await generateQuestionsForSubject("Mathematics", [], 25);
+
+        allQuestions = [
+          ...physicsQuestions.map(q => ({ ...q, subject: "Physics" })),
+          ...chemistryQuestions.map(q => ({ ...q, subject: "Chemistry" })),
+          ...mathQuestions.map(q => ({ ...q, subject: "Mathematics" }))
+        ];
+      } else {
+        // Custom test
+        timeLimit = parseInt(customTime);
+        const questionsPerSubject = Math.ceil(25 / selectedSubjects.length);
+
+        for (const subject of selectedSubjects) {
+          const topicsForSubject = selectedTopics[subject] || [];
+          const questions = await generateQuestionsForSubject(subject, topicsForSubject, questionsPerSubject);
+          allQuestions = [...allQuestions, ...questions.map(q => ({ ...q, subject }))];
+        }
+      }
+
+      const testConfig = {
+        questions: allQuestions,
+        timeLimit: timeLimit,
+        testType: testType,
+        subjects: testType === "full" ? ["Physics", "Chemistry", "Mathematics"] : selectedSubjects,
+        totalQuestions: allQuestions.length
+      };
+
+      setTestData(testConfig);
+      setTestCreated(true);
+    } catch (error) {
+      console.error("Error creating test:", error);
+      alert("Failed to create test. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTakeTest = () => {
+    // Store test data in localStorage for the test page
+    localStorage.setItem('currentTest', JSON.stringify(testData));
+    router.push('/takeTest');
+  };
+
+  if (testCreated && testData) {
+    return (
+      <div>
+        <Navbar />
+        <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-violet-500 to-blue-400 dark:from-gray-900 dark:to-gray-800 p-6 text-white font-sans">
+          <div className="max-w-4xl mx-auto bg-white/10 backdrop-blur-lg p-10 rounded-3xl shadow-2xl border border-white/20">
+            <h1 className="text-5xl font-extrabold text-center text-white mb-8">
+              Test Created Successfully!
+            </h1>
+            
+            <div className="bg-white/20 rounded-2xl p-6 mb-8">
+              <h2 className="text-2xl font-bold mb-4">Test Details:</h2>
+              <div className="space-y-2 text-lg">
+                <p><strong>Type:</strong> {testType === "full" ? "Full Test" : "Custom Test"}</p>
+                <p><strong>Total Questions:</strong> {testData.totalQuestions}</p>
+                <p><strong>Time Limit:</strong> {testData.timeLimit} minutes</p>
+                <p><strong>Subjects:</strong> {testData.subjects.join(", ")}</p>
+              </div>
+            </div>
+
+            <div className="text-center space-y-4">
+              <button
+                onClick={handleTakeTest}
+                className="px-10 py-4 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold text-lg shadow-xl hover:scale-105 hover:shadow-2xl transition-all duration-300"
+              >
+                Take Test
+              </button>
+              
+              <div>
+                <button
+                  onClick={() => {
+                    setTestCreated(false);
+                    setTestData(null);
+                  }}
+                  className="px-6 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white font-medium transition-all duration-300"
+                >
+                  Create Another Test
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
-    <Navbar/>
-    
-    <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-violet-500 to-blue-400 dark:from-gray-900 dark:to-gray-800 p-6 text-white font-sans">
+      <Navbar />
       
-      <div className="max-w-5xl mx-auto bg-white/10 backdrop-blur-lg p-10 rounded-3xl shadow-2xl border border-white/20">
-        <h1 className="text-5xl font-extrabold text-center text-white mb-8">
-          Create a Mock Test
-        </h1>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-violet-500 to-blue-400 dark:from-gray-900 dark:to-gray-800 p-6 text-white font-sans">
+        
+        <div className="max-w-5xl mx-auto bg-white/10 backdrop-blur-lg p-10 rounded-3xl shadow-2xl border border-white/20">
+          <h1 className="text-5xl font-extrabold text-center text-white mb-8">
+            Create a Mock Test
+          </h1>
 
-        <div className="flex justify-center gap-6 mb-10">
-          {["full", "custom"].map((type) => (
-            <button
-              key={type}
-              onClick={() => setTestType(type)}
-              className={`px-6 py-3 rounded-xl text-lg font-semibold transition-all duration-300 ${
-                testType === type
-                  ? "bg-white text-indigo-700 shadow-lg scale-105"
-                  : "bg-white/20 text-white hover:bg-white/30"
-              }`}
-            >
-              {type === "full" ? "Full Test" : "Custom Test"}
-            </button>
-          ))}
-        </div>
+          <div className="flex justify-center gap-6 mb-10">
+            {["full", "custom"].map((type) => (
+              <button
+                key={type}
+                onClick={() => setTestType(type)}
+                className={`px-6 py-3 rounded-xl text-lg font-semibold transition-all duration-300 ${
+                  testType === type
+                    ? "bg-white text-indigo-700 shadow-lg scale-105"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                }`}
+              >
+                {type === "full" ? "Full Test" : "Custom Test"}
+              </button>
+            ))}
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8 text-white">
-          {testType === "full" ? (
-            <div className="text-center text-xl font-medium">
-              <p>
-                You will receive <strong>25 questions</strong> each from{" "}
-                <strong>Physics, Chemistry, and Mathematics</strong>.
-              </p>
-              <p className="mt-2">Time allotted: <strong>3 hours</strong></p>
-            </div>
-          ) : (
-            <>
-              <div>
-                <label className="block text-2xl font-bold mb-3">
-                  Select Subjects
-                </label>
-                <div className="flex flex-wrap gap-4">
-                  {Object.keys(subjects).map((subject) => (
-                    <label
-                      key={subject}
-                      className={`flex items-center gap-2 px-5 py-2 rounded-full cursor-pointer transition-all duration-300 ${
-                        selectedSubjects.includes(subject)
-                          ? "bg-white text-indigo-700 shadow-lg"
-                          : "bg-white/20 hover:bg-white/30 text-white"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedSubjects.includes(subject)}
-                        onChange={() => handleSubjectToggle(subject)}
-                        className="accent-indigo-600 w-4 h-4"
-                      />
-                      <span className="text-lg">{subject}</span>
-                    </label>
-                  ))}
-                </div>
+          <form onSubmit={handleSubmit} className="space-y-8 text-white">
+            {testType === "full" ? (
+              <div className="text-center text-xl font-medium">
+                <p>
+                  You will receive <strong>25 questions</strong> each from{" "}
+                  <strong>Physics, Chemistry, and Mathematics</strong>.
+                </p>
+                <p className="mt-2">Time allotted: <strong>3 hours</strong></p>
               </div>
-
-              {selectedSubjects.map((subject) => (
-                <div key={subject}>
-                  <label className="block mt-6 text-xl font-semibold mb-2">
-                    Select Topics for {subject}
+            ) : (
+              <>
+                <div>
+                  <label className="block text-2xl font-bold mb-3">
+                    Select Subjects
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {subjects[subject].map((topic) => (
+                  <div className="flex flex-wrap gap-4">
+                    {Object.keys(subjects).map((subject) => (
                       <label
-                        key={topic}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-md cursor-pointer transition-all duration-200 ${
-                          selectedTopics[subject]?.includes(topic)
-                            ? "bg-white text-indigo-700 shadow"
+                        key={subject}
+                        className={`flex items-center gap-2 px-5 py-2 rounded-full cursor-pointer transition-all duration-300 ${
+                          selectedSubjects.includes(subject)
+                            ? "bg-white text-indigo-700 shadow-lg"
                             : "bg-white/20 hover:bg-white/30 text-white"
                         }`}
                       >
                         <input
                           type="checkbox"
-                          checked={
-                            selectedTopics[subject]?.includes(topic) || false
-                          }
-                          onChange={() => handleTopicToggle(subject, topic)}
-                          className="accent-indigo-500"
+                          checked={selectedSubjects.includes(subject)}
+                          onChange={() => handleSubjectToggle(subject)}
+                          className="accent-indigo-600 w-4 h-4"
                         />
-                        <span className="text-sm">{topic}</span>
+                        <span className="text-lg">{subject}</span>
                       </label>
                     ))}
                   </div>
                 </div>
-              ))}
 
-              <div>
-                <label className="block mt-6 text-xl font-semibold mb-2">
-                  Custom Time (in minutes):
-                </label>
-                <input
-                  type="number"
-                  value={customTime}
-                  onChange={(e) => setCustomTime(e.target.value)}
-                  className="w-full px-4 py-2 rounded-md bg-white/20 border border-white/30 focus:outline-none focus:ring-2 focus:ring-white text-white placeholder-white/70"
-                  min="10"
-                  max="180"
-                />
-              </div>
-            </>
-          )}
+                {selectedSubjects.map((subject) => (
+                  <div key={subject}>
+                    <label className="block mt-6 text-xl font-semibold mb-2">
+                      Select Topics for {subject}
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {subjects[subject].map((topic) => (
+                        <label
+                          key={topic}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-md cursor-pointer transition-all duration-200 ${
+                            selectedTopics[subject]?.includes(topic)
+                              ? "bg-white text-indigo-700 shadow"
+                              : "bg-white/20 hover:bg-white/30 text-white"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={
+                              selectedTopics[subject]?.includes(topic) || false
+                            }
+                            onChange={() => handleTopicToggle(subject, topic)}
+                            className="accent-indigo-500"
+                          />
+                          <span className="text-sm">{topic}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
 
-          <div className="text-center">
-            <button
-              type="submit"
-              className="mt-8 px-10 py-4 rounded-xl bg-white text-indigo-700 font-bold text-lg shadow-xl hover:scale-105 hover:shadow-2xl transition-all duration-300"
-            >
-              Create Test
-            </button>
-          </div>
-        </form>
+                <div>
+                  <label className="block mt-6 text-xl font-semibold mb-2">
+                    Custom Time (in minutes):
+                  </label>
+                  <input
+                    type="number"
+                    value={customTime}
+                    onChange={(e) => setCustomTime(e.target.value)}
+                    className="w-full px-4 py-2 rounded-md bg-white/20 border border-white/30 focus:outline-none focus:ring-2 focus:ring-white text-white placeholder-white/70"
+                    min="10"
+                    max="180"
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="text-center">
+              <button
+                type="submit"
+                disabled={isLoading || (testType === "custom" && selectedSubjects.length === 0)}
+                className={`mt-8 px-10 py-4 rounded-xl font-bold text-lg shadow-xl transition-all duration-300 ${
+                  isLoading || (testType === "custom" && selectedSubjects.length === 0)
+                    ? "bg-gray-500 text-gray-300 cursor-not-allowed"
+                    : "bg-white text-indigo-700 hover:scale-105 hover:shadow-2xl"
+                }`}
+              >
+                {isLoading ? "Creating Test..." : "Create Test"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
     </div>
   );
 }

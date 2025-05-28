@@ -34,7 +34,7 @@ const Navbar = () => {
             Question Bank
           </Link>
           <Link
-            href="/notes"
+            href="/quickNotes"
             className="hover:text-blue-600 dark:hover:text-blue-400 transition"
           >
             Quick Notes
