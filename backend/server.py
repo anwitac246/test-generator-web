@@ -26,21 +26,18 @@ output_dir = "./pdf_images"
 os.makedirs(output_dir, exist_ok=True)
 os.makedirs(pdf_folder, exist_ok=True)
 
-# Use a more powerful sentence transformer for better semantic understanding
 embedder = SentenceTransformer('all-MiniLM-L6-v2')
 
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "llama3-8b-8192"
 
-# Separate FAISS indices for questions and images
 question_faiss_index = faiss.IndexFlatL2(384)
 image_faiss_index = faiss.IndexFlatL2(384)
 
-# Enhanced data structures
-questions_data = []  # Store extracted questions with metadata
-images_data = []     # Store extracted images with metadata
-question_image_associations = []  # Store associations between questions and images
+questions_data = [] 
+images_data = []
+question_image_associations = []  
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -58,10 +55,8 @@ def upload_pdf():
     pdf_path = os.path.join(pdf_folder, file.filename)
     file.save(pdf_path)
     
-    # Enhanced extraction with better question-image association
     extracted_questions, extracted_images, associations = extract_pdf_data_enhanced(pdf_path, output_dir)
     
-    # Store data with associations
     store_enhanced_data_to_faiss(extracted_questions, extracted_images, associations)
     
     return jsonify({
@@ -79,7 +74,6 @@ def generate_questions_api():
     topics = request.json.get('topics', [])
     topic_filter = topics[0] if topics else None
 
-    # Use RAG to find relevant questions
     if topic_filter:
         relevant_questions = retrieve_relevant_questions(topic_filter, subject, count * 2)
     else:
@@ -88,11 +82,11 @@ def generate_questions_api():
     generated_questions = []
     
     for question_data in relevant_questions[:count]:
-        # Generate MCQ from the question text
+       
         mcq = generate_enhanced_mcq(question_data)
         
         if mcq:
-            # Find associated image if any
+            
             associated_image = find_associated_image(question_data['id'])
             
             question_obj = {
@@ -105,7 +99,6 @@ def generate_questions_api():
                 "pdf_source": question_data.get("source_pdf")
             }
             
-            # Add image data if associated image exists
             if associated_image and os.path.exists(associated_image.get("image_path", "")):
                 try:
                     with open(associated_image["image_path"], "rb") as img_file:
@@ -152,7 +145,6 @@ def extract_pdf_data_enhanced(pdf_path, output_dir):
         text = page.get_text()
         lower_text = text.lower()
         
-        # Subject detection
         if "physics" in lower_text:
             current_subject = "Physics"
         elif "chemistry" in lower_text:
@@ -162,14 +154,11 @@ def extract_pdf_data_enhanced(pdf_path, output_dir):
         elif "biology" in lower_text:
             current_subject = "Biology"
         
-        # Extract text blocks with positions
         text_blocks = page.get_text("dict")
         
-        # Extract questions from text
         questions_on_page = extract_questions_from_text(text, page_num, filename, current_subject)
         extracted_questions.extend(questions_on_page)
         
-        # Extract images with enhanced metadata
         for img_index, img in enumerate(page.get_images(full=True)):
             xref = img[0]
             base_image = doc.extract_image(xref)
@@ -182,10 +171,8 @@ def extract_pdf_data_enhanced(pdf_path, output_dir):
             with open(image_path, "wb") as f:
                 f.write(image_bytes)
             
-            # Get image position and surrounding text
-            img_rect = fitz.Rect(img[1:5])  # Image rectangle
+            img_rect = fitz.Rect(img[1:5]) 
             
-            # Find text near the image (within reasonable distance)
             nearby_text = extract_text_near_image(page, img_rect, distance_threshold=100)
             
             image_data = {
@@ -201,12 +188,11 @@ def extract_pdf_data_enhanced(pdf_path, output_dir):
                     "height": img_rect.height
                 },
                 "caption": nearby_text,
-                "surrounding_text": text  # Full page text for context
+                "surrounding_text": text  
             }
             
             extracted_images.append(image_data)
             
-            # Associate with questions on the same page
             for question in questions_on_page:
                 similarity_score = calculate_text_similarity(question["text"], nearby_text)
                 if similarity_score > 0.3:  # Threshold for association
@@ -224,18 +210,17 @@ def extract_questions_from_text(text, page_num, filename, subject):
     """Extract potential questions from text using patterns"""
     questions = []
     
-    # Common question patterns in JEE materials
     question_patterns = [
-        r'(\d+\.\s+.*?(?=\d+\.\s+|\n\n|\Z))',  # Numbered questions
-        r'(Q\d+\.\s+.*?(?=Q\d+\.\s+|\n\n|\Z))',  # Q1, Q2 format
-        r'(\(\d+\)\s+.*?(?=\(\d+\)|\n\n|\Z))',  # (1), (2) format
-        r'(Example\s+\d+.*?(?=Example\s+\d+|\n\n|\Z))',  # Example questions
+        r'(\d+\.\s+.*?(?=\d+\.\s+|\n\n|\Z))', 
+        r'(Q\d+\.\s+.*?(?=Q\d+\.\s+|\n\n|\Z))',  
+        r'(\(\d+\)\s+.*?(?=\(\d+\)|\n\n|\Z))', 
+        r'(Example\s+\d+.*?(?=Example\s+\d+|\n\n|\Z))', 
     ]
     
     for i, pattern in enumerate(question_patterns):
         matches = re.findall(pattern, text, re.DOTALL | re.IGNORECASE)
         for match in matches:
-            if len(match.strip()) > 50:  # Filter out very short matches
+            if len(match.strip()) > 50:  
                 question_data = {
                     "id": str(uuid.uuid4()),
                     "text": match.strip(),
@@ -257,16 +242,15 @@ def extract_text_near_image(page, img_rect, distance_threshold=100):
     for word in words:
         word_rect = fitz.Rect(word[:4])
         
-        # Calculate distance between word and image
         distance = min(
-            abs(word_rect.x0 - img_rect.x1),  # Distance to right of image
-            abs(word_rect.x1 - img_rect.x0),  # Distance to left of image
-            abs(word_rect.y0 - img_rect.y1),  # Distance below image
-            abs(word_rect.y1 - img_rect.y0)   # Distance above image
+            abs(word_rect.x0 - img_rect.x1), 
+            abs(word_rect.x1 - img_rect.x0), 
+            abs(word_rect.y0 - img_rect.y1), 
+            abs(word_rect.y1 - img_rect.y0)  
         )
         
         if distance <= distance_threshold:
-            nearby_words.append(word[4])  # word[4] is the text content
+            nearby_words.append(word[4])  
     
     return " ".join(nearby_words)
 
@@ -285,8 +269,7 @@ def calculate_text_similarity(text1, text2):
 def store_enhanced_data_to_faiss(questions, images, associations):
     """Store questions and images in separate FAISS indices"""
     global questions_data, images_data, question_image_associations
-    
-    # Store questions
+   
     if questions:
         question_embeddings = []
         for question in questions:
@@ -298,11 +281,10 @@ def store_enhanced_data_to_faiss(questions, images, associations):
             embeddings_np = np.array(question_embeddings, dtype='float32')
             question_faiss_index.add(embeddings_np)
     
-    # Store images
     if images:
         image_embeddings = []
         for image in images:
-            # Embed image caption and surrounding text
+            
             text_to_embed = f"{image.get('caption', '')} {image.get('surrounding_text', '')[:500]}"
             embedding = embedder.encode(text_to_embed)
             image_embeddings.append(embedding)
@@ -312,7 +294,6 @@ def store_enhanced_data_to_faiss(questions, images, associations):
             embeddings_np = np.array(image_embeddings, dtype='float32')
             image_faiss_index.add(embeddings_np)
     
-    # Store associations
     question_image_associations.extend(associations)
 
 def retrieve_relevant_questions(query, subject, k=10):
@@ -322,7 +303,6 @@ def retrieve_relevant_questions(query, subject, k=10):
     
     query_embedding = embedder.encode([query])
     
-    # Search in question index
     distances, indices = question_faiss_index.search(query_embedding.astype('float32'), min(k*2, len(questions_data)))
     
     relevant_questions = []
@@ -408,11 +388,10 @@ Answer: [A/B/C/D]
 
 def parse_mcq_string(mcq_str):
     """Parse MCQ string into structured format"""
-    # Extract question
+   
     q_match = re.search(r'Q:\s*(.*?)\s*(?=A\.)', mcq_str, re.DOTALL)
     question = q_match.group(1).strip() if q_match else ""
 
-    # Extract options
     options = []
     for option_letter in ['A', 'B', 'C', 'D']:
         if option_letter == 'D':
@@ -426,7 +405,6 @@ def parse_mcq_string(mcq_str):
             option_text = match.group(1).strip().split('\n')[0].strip()
             options.append(option_text)
 
-    # Extract answer
     ans_match = re.search(r'Answer:\s*([ABCD])', mcq_str)
     answer = ans_match.group(1).strip() if ans_match else ""
 
@@ -492,7 +470,6 @@ def process_all_pdfs_on_startup():
     print("Processing all existing PDFs in folder...")
     global questions_data, images_data, question_image_associations
     
-    # Clear existing data
     questions_data.clear()
     images_data.clear()
     question_image_associations.clear()
