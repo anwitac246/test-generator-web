@@ -1,8 +1,9 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/navbar";
-
+import { auth } from "../lib/firebase-config";
+import { onAuthStateChanged } from "firebase/auth";
 const subjects = {
   Physics: [
     "Units and Measurements",
@@ -74,6 +75,9 @@ export default function CreateMockTest() {
   const [isLoading, setIsLoading] = useState(false);
   const [testCreated, setTestCreated] = useState(false);
   const [testData, setTestData] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [testHistory, setTestHistory] = useState([]);
+  const [testId, setTestId] = useState(null);
   const router = useRouter();
 
   const handleSubjectToggle = (subject) => {
@@ -86,7 +90,35 @@ export default function CreateMockTest() {
       setSelectedSubjects([...selectedSubjects, subject]);
     }
   };
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setIsAuthenticated(true);
+        try {
+          const response = await fetch('http://localhost:5000/api/test-history', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userId: user.uid }),
+          });
+          const data = await response.json();
+          if (response.ok) {
+            setTestHistory(data.tests);
+          } else {
+            console.error('Failed to fetch test history:', data.error);
+          }
+        } catch (error) {
+          console.error('Error fetching test history:', error);
+        }
+      } else {
+        setIsAuthenticated(false);
+        router.push("/login");
+      }
+    });
 
+    return () => unsubscribe();
+  }, [router]);
   const handleTopicToggle = (subject, topic) => {
     const subjectTopics = selectedTopics[subject] || [];
     if (subjectTopics.includes(topic)) {
@@ -167,6 +199,40 @@ export default function CreateMockTest() {
         totalQuestions: allQuestions.length
       };
 
+      // Save test to database
+      const user = auth.currentUser;
+      if (user) {
+        const response = await fetch('http://localhost:5000/api/save-test', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.uid,
+            testConfig,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setTestId(data.testId);
+          setTestHistory([
+            {
+              testId: data.testId,
+              testType: testConfig.testType,
+              subjects: testConfig.subjects,
+              totalQuestions: testConfig.totalQuestions,
+              timeLimit: testConfig.timeLimit,
+              questions: testConfig.questions,
+              createdAt: new Date().toISOString(),
+            },
+            ...testHistory,
+          ]);
+        } else {
+          console.error('Failed to save test:', await response.json());
+        }
+      }
+
       setTestData(testConfig);
       setTestCreated(true);
     } catch (error) {
@@ -179,14 +245,29 @@ export default function CreateMockTest() {
 
   const handleTakeTest = () => {
     // Store test data in localStorage for the test page
+    localStorage.setItem('currentTest', JSON.stringify({ ...testData, testId }));
+    router.push('/takeTest');
+  };
+  const handleRetakeTest = (test) => {
+    const testData = {
+      testId: test.testId,
+      questions: test.questions,
+      timeLimit: test.timeLimit,
+      testType: test.testType,
+      subjects: test.subjects,
+      totalQuestions: test.totalQuestions,
+    };
     localStorage.setItem('currentTest', JSON.stringify(testData));
     router.push('/takeTest');
   };
-
+  if (!isAuthenticated) {
+    return <div>Loading...</div>;
+  }
   if (testCreated && testData) {
     return (
       <div>
         <Navbar />
+
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white">
           <div className="max-w-4xl mx-auto">
             {/* Success Animation */}
@@ -201,7 +282,7 @@ export default function CreateMockTest() {
               </h1>
               <p className="text-slate-400 text-lg">Your mock test is ready to begin</p>
             </div>
-            
+
             {/* Test Details Card */}
             <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-8 mb-8 shadow-2xl">
               <h2 className="text-2xl font-semibold mb-6 text-slate-200 flex items-center gap-3">
@@ -212,7 +293,7 @@ export default function CreateMockTest() {
                 </div>
                 Test Configuration
               </h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
@@ -255,12 +336,13 @@ export default function CreateMockTest() {
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-cyan-600 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </button>
-              
+
               <div>
                 <button
                   onClick={() => {
                     setTestCreated(false);
                     setTestData(null);
+                    setTestId(null);
                   }}
                   className="px-6 py-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-slate-300 hover:text-white font-medium transition-all duration-300 border border-slate-600/50 hover:border-slate-500/50"
                 >
@@ -277,7 +359,7 @@ export default function CreateMockTest() {
   return (
     <div>
       <Navbar />
-      
+
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
@@ -296,11 +378,10 @@ export default function CreateMockTest() {
               <button
                 key={type}
                 onClick={() => setTestType(type)}
-                className={`group relative px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-300 ${
-                  testType === type
-                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg scale-105"
-                    : "bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-white border border-slate-700/50"
-                }`}
+                className={`group relative px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-300 ${testType === type
+                  ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg scale-105"
+                  : "bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-white border border-slate-700/50"
+                  }`}
               >
                 <span className="relative z-10 flex items-center gap-2">
                   {type === "full" ? (
@@ -367,15 +448,13 @@ export default function CreateMockTest() {
                       {Object.keys(subjects).map((subject) => (
                         <label
                           key={subject}
-                          className={`group cursor-pointer transition-all duration-300 ${
-                            selectedSubjects.includes(subject) ? "scale-105" : "hover:scale-102"
-                          }`}
+                          className={`group cursor-pointer transition-all duration-300 ${selectedSubjects.includes(subject) ? "scale-105" : "hover:scale-102"
+                            }`}
                         >
-                          <div className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
-                            selectedSubjects.includes(subject)
-                              ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-blue-500/50 shadow-lg shadow-blue-500/25"
-                              : "bg-slate-700/30 border-slate-600/50 hover:border-slate-500/50 hover:bg-slate-700/50"
-                          }`}>
+                          <div className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${selectedSubjects.includes(subject)
+                            ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-blue-500/50 shadow-lg shadow-blue-500/25"
+                            : "bg-slate-700/30 border-slate-600/50 hover:border-slate-500/50 hover:bg-slate-700/50"
+                            }`}>
                             <input
                               type="checkbox"
                               checked={selectedSubjects.includes(subject)}
@@ -383,11 +462,10 @@ export default function CreateMockTest() {
                               className="absolute top-4 right-4 w-5 h-5 accent-blue-500"
                             />
                             <div className="text-center">
-                              <div className={`w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center ${
-                                selectedSubjects.includes(subject)
-                                  ? "bg-blue-500/30"
-                                  : "bg-slate-600/30 group-hover:bg-slate-500/30"
-                              }`}>
+                              <div className={`w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center ${selectedSubjects.includes(subject)
+                                ? "bg-blue-500/30"
+                                : "bg-slate-600/30 group-hover:bg-slate-500/30"
+                                }`}>
                                 <span className="text-2xl">
                                   {subject === "Physics" ? "⚛️" : subject === "Chemistry" ? "🧪" : "📊"}
                                 </span>
@@ -413,11 +491,10 @@ export default function CreateMockTest() {
                         {subjects[subject].map((topic) => (
                           <label
                             key={topic}
-                            className={`group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                              selectedTopics[subject]?.includes(topic)
-                                ? "bg-purple-500/20 border border-purple-500/30 text-white"
-                                : "bg-slate-700/30 border border-slate-600/30 text-slate-300 hover:bg-slate-600/30 hover:text-white hover:border-slate-500/30"
-                            }`}
+                            className={`group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${selectedTopics[subject]?.includes(topic)
+                              ? "bg-purple-500/20 border border-purple-500/30 text-white"
+                              : "bg-slate-700/30 border border-slate-600/30 text-slate-300 hover:bg-slate-600/30 hover:text-white hover:border-slate-500/30"
+                              }`}
                           >
                             <input
                               type="checkbox"
@@ -470,11 +547,10 @@ export default function CreateMockTest() {
                 <button
                   type="submit"
                   disabled={isLoading || (testType === "custom" && selectedSubjects.length === 0)}
-                  className={`group relative px-10 py-4 rounded-xl font-semibold text-lg transition-all duration-300 ${
-                    isLoading || (testType === "custom" && selectedSubjects.length === 0)
-                      ? "bg-slate-700/50 text-slate-500 cursor-not-allowed"
-                      : "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg hover:shadow-blue-500/25 transform hover:scale-105 hover:from-blue-600 hover:to-purple-600"
-                  }`}
+                  className={`group relative px-10 py-4 rounded-xl font-semibold text-lg transition-all duration-300 ${isLoading || (testType === "custom" && selectedSubjects.length === 0)
+                    ? "bg-slate-700/50 text-slate-500 cursor-not-allowed"
+                    : "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg hover:shadow-blue-500/25 transform hover:scale-105 hover:from-blue-600 hover:to-purple-600"
+                    }`}
                 >
                   <span className="relative z-10 flex items-center gap-2">
                     {isLoading ? (
@@ -495,7 +571,7 @@ export default function CreateMockTest() {
                     )}
                   </span>
                 </button>
-                
+
                 {testType === "custom" && selectedSubjects.length === 0 && (
                   <p className="mt-3 text-slate-400 text-sm">
                     Please select at least one subject to continue
@@ -506,6 +582,62 @@ export default function CreateMockTest() {
           </div>
         </div>
       </div>
-    </div>   
+      {/* Previous Tests Section */}
+      <div className="mt-16">
+        <h2 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+          Previous Tests
+        </h2>
+        {testHistory.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-slate-700/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <p className="text-slate-400 text-lg">No tests created yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {testHistory.map((test) => (
+              <div
+                key={test.testId}
+                className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${test.testType === "full"
+                      ? "bg-blue-500/20 text-blue-400"
+                      : "bg-purple-500/20 text-purple-400"
+                    }`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-200">
+                    {test.testType === "full" ? "Full Test" : "Custom Test"}
+                  </h3>
+                </div>
+
+                <div className="space-y-2 text-sm text-slate-400 mb-4">
+                  <p><span className="text-slate-300">Subjects:</span> {test.subjects.join(", ")}</p>
+                  <p><span className="text-slate-300">Questions:</span> {test.totalQuestions}</p>
+                  <p><span className="text-slate-300">Duration:</span> {test.timeLimit} minutes</p>
+                  <p><span className="text-slate-300">Created:</span> {new Date(test.createdAt).toLocaleDateString()}</p>
+                  {test.score !== undefined && (
+                    <p><span className="text-slate-300">Score:</span> {test.score}/{test.total} ({test.percentage}%)</p>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => handleRetakeTest(test)}
+                  className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-lg font-semibold text-white transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-blue-500/25"
+                >
+                  Retake Test
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

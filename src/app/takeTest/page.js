@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { auth } from "../lib/firebase-config"; 
+import { onAuthStateChanged } from "firebase/auth";
 import Navbar from "../components/navbar";
 
 export default function TakeTest() {
@@ -13,24 +15,43 @@ export default function TakeTest() {
   const [currentSubject, setCurrentSubject] = useState("All");
   const [isLoading, setIsLoading] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
+  const [user, setUser] = useState(null); 
+  const [authLoading, setAuthLoading] = useState(true); 
   const router = useRouter();
 
   useEffect(() => {
-    // Load test data from localStorage
-    const storedTest = localStorage.getItem('currentTest');
-    if (storedTest) {
-      const parsedTest = JSON.parse(storedTest);
-      setTestData(parsedTest);
-      // Convert minutes to seconds for the timer
-      setTimeLeft(parsedTest.timeLimit * 60);
-    } else {
-      router.push('/mockTests');
-    }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+      
+      if (!currentUser) {
+        router.push('/login'); 
+        return;
+      }
+    });
+
+    return () => unsubscribe();
   }, [router]);
 
   useEffect(() => {
+   
+    if (!authLoading && user) {
+    
+      const storedTest = localStorage.getItem('currentTest');
+      if (storedTest) {
+        const parsedTest = JSON.parse(storedTest);
+        setTestData(parsedTest);
+       
+        setTimeLeft(parsedTest.timeLimit * 60);
+      } else {
+        router.push('/mockTests');
+      }
+    }
+  }, [router, authLoading, user]);
+
+  useEffect(() => {
     if (timeLeft > 0 && !testCompleted) {
-      // Show warning when 5 minutes (300 seconds) are left
+     
       if (timeLeft === 300) {
         setShowWarning(true);
         setTimeout(() => setShowWarning(false), 5000);
@@ -41,7 +62,7 @@ export default function TakeTest() {
       }, 1000);
       return () => clearTimeout(timer);
     } else if (timeLeft === 0 && !testCompleted) {
-      // Auto-submit when time runs out
+     
       handleSubmitTest();
     }
   }, [timeLeft, testCompleted]);
@@ -54,8 +75,8 @@ export default function TakeTest() {
   };
 
   const getTimeColor = () => {
-    if (timeLeft <= 300) return "text-red-400"; // Last 5 minutes
-    if (timeLeft <= 900) return "text-orange-400"; // Last 15 minutes
+    if (timeLeft <= 300) return "text-red-400"; 
+    if (timeLeft <= 900) return "text-orange-400"; 
     return "text-emerald-400";
   };
 
@@ -79,58 +100,98 @@ export default function TakeTest() {
   };
 
   const handleSubmitTest = async () => {
-    setIsLoading(true);
-    try {
-      if (!testData || !testData.questions) {
-    console.error("Test data not available");
-    return;
-  }
-      const response = await fetch('http://localhost:5000/api/evaluate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          questions: testData.questions,
-          userAnswers: testData.questions.map((_, index) => userAnswers[index] || ""),
-        }),
-      });
-
-      if (response.ok) {
-        const results = await response.json();
-        setTestResults(results);
-
-        // Save test results to MongoDB if user is authenticated
-        try {
-          await fetch('http://localhost:5000/api/save-test-result', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: 'user_id', // Replace with actual user ID from auth
-              testId: testData.testId || Date.now().toString(),
-              results,
-              timeTaken: (testData.timeLimit * 60) - timeLeft,
-            }),
-          });
-        } catch (saveError) {
-          console.log('Could not save test result:', saveError);
-        }
-      } else {
-        throw new Error('Failed to evaluate test');
-      }
-    } catch (error) {
-      console.error('Error submitting test:', error);
-      alert('Error submitting test. Please try again.');
-    } finally {
-      setIsLoading(false);
-      setTestCompleted(true);
+  setIsLoading(true);
+  try {
+    if (!testData || !testData.questions) {
+      console.error("Test data not available");
+      return;
     }
-  };
 
-  const getSubjectStats = () => {
-    if (!testResults || !testData) return {};
+    if (!user) {
+      console.error("User not authenticated");
+      alert("Please login to submit the test");
+      return;
+    }
+
+    // Step 1: Evaluate the test
+    const response = await fetch('http://localhost:5000/api/evaluate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        questions: testData.questions,
+        userAnswers: testData.questions.map((_, index) => userAnswers[index] || ""),
+      }),
+    });
+
+    if (response.ok) {
+      const results = await response.json();
+      setTestResults(results);
+
+      try {
+        // Step 2: Save test result to database
+        console.log("Saving test results...");
+        console.log("Test ID:", testData.testId);
+        console.log("User ID:", user.uid);
+        console.log("Results:", results);
+
+        const testResultData = {
+          userId: user.uid,
+          userEmail: user.email,
+          testId: testData.testId || `test_${Date.now()}`, // Generate test ID if not available
+          testName: testData.testName || 'Custom Test',
+          testType: testData.testType || 'custom',
+          subjects: testData.subjects || [],
+          totalQuestions: testData.questions.length,
+          results: {
+            score: results.score,
+            total: results.total,
+            percentage: ((results.score / results.total) * 100).toFixed(1),
+            details: results.details,
+            subjectWiseResults: getSubjectStats(results)
+          },
+          timeTaken: (testData.timeLimit * 60) - timeLeft,
+          timeLimit: testData.timeLimit * 60,
+          completedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        };
+
+        const saveResponse = await fetch('http://localhost:5000/api/save-test-result', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${await user.getIdToken()}`,
+          },
+          body: JSON.stringify(testResultData),
+        });
+
+        if (saveResponse.ok) {
+          const saveResult = await saveResponse.json();
+          console.log('Test result saved successfully:', saveResult);
+        } else {
+          const errorData = await saveResponse.json();
+          console.error('Failed to save test result:', errorData);
+          // Don't show error to user, just log it
+        }
+      } catch (saveError) {
+        console.error('Could not save test result:', saveError);
+        // Continue with showing results even if save fails
+      }
+    } else {
+      throw new Error('Failed to evaluate test');
+    }
+  } catch (error) {
+    console.error('Error submitting test:', error);
+    alert('Error submitting test. Please try again.');
+  } finally {
+    setIsLoading(false);
+    setTestCompleted(true);
+  }
+};
+
+  const getSubjectStats = (results = testResults) => {
+    if (!results || !testData) return {};
     const subjectStats = {};
     const subjects = [...new Set(testData.questions.map((q) => q.subject))];
     subjects.forEach((subject) => {
@@ -138,7 +199,7 @@ export default function TakeTest() {
         .map((q, index) => ({ question: q, index }))
         .filter((item) => item.question.subject === subject);
       const correctAnswers = subjectQuestions.filter(
-        (item) => testResults.details[item.index]?.is_correct
+        (item) => results.details[item.index]?.is_correct
       ).length;
       subjectStats[subject] = {
         total: subjectQuestions.length,
@@ -161,6 +222,18 @@ export default function TakeTest() {
       default: return "📚";
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-white text-xl font-semibold">Checking authentication...</div>
+          <div className="text-slate-400 mt-2">Please wait</div>
+        </div>
+      </div>
+    );
+  }
 
   if (!testData) {
     return (
@@ -196,6 +269,11 @@ export default function TakeTest() {
                 Test Completed!
               </h1>
               <p className="text-slate-400 text-lg">Here are your results</p>
+              {user && (
+                <p className="text-slate-500 text-sm mt-2">
+                  Results saved for {user.email}
+                </p>
+              )}
             </div>
 
             {/* Overall Score Card */}

@@ -5,6 +5,7 @@ import os
 import numpy as np
 import faiss
 import uuid
+from datetime import datetime, timezone
 import base64
 from io import BytesIO
 from sentence_transformers import SentenceTransformer
@@ -16,7 +17,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 import json
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-import datetime
 import pandas as pd
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -25,7 +25,6 @@ load_dotenv(dotenv_path)
 app = Flask(__name__)
 CORS(app)
 
-# MongoDB connection
 mongo_uri = os.getenv('MONGODB_URI')
 mongo_client = MongoClient(mongo_uri)
 db = mongo_client['jeeAce']
@@ -142,7 +141,8 @@ def save_test():
         "totalQuestions": test_config.get("totalQuestions"),
         "timeLimit": test_config.get("timeLimit"),
         "questions": test_config.get("questions"),
-        "createdAt": datetime.datetime.utcnow(),
+    
+"createdAt": datetime.now(timezone.utc),
     }
 
     result = tests_collection.insert_one(test_data)
@@ -150,32 +150,49 @@ def save_test():
 
 @app.route('/api/save-test-result', methods=['POST'])
 def save_test_result():
-    data = request.json
-    user_id = data.get('userId')
-    test_id = data.get('testId')
-    results = data.get('results')
-    
-    if not user_id or not test_id or not results:
-        return jsonify({"error": "Missing userId, testId, or results"}), 400
-
     try:
-        test_id_obj = ObjectId(test_id)
-        tests_collection.update_one(
-            {"_id": test_id_obj, "userId": user_id},
-            {
-                "$set": {
-                    "score": results.get("score"),
-                    "total": results.get("total"),
-                    "percentage": results.get("percentage"),
-                    "detailedResults": results.get("details"),
-                    "completedAt": datetime.datetime.utcnow(),
-                }
-            }
-        )
-        return jsonify({"message": "Test result saved successfully"}), 200
-    except Exception as e:
-        return jsonify({"error": f"Failed to save test result: {str(e)}"}), 500
+        data = request.json
+        print(f"Received test result data: {data}")
+        
+      
+        required_fields = ['userId', 'testId', 'results']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({"error": f"Missing required field: {field}"}), 400
 
+        test_result = {
+            "userId": data.get('userId'),
+            "userEmail": data.get('userEmail'),
+            "testId": data.get('testId'),
+            "testName": data.get('testName', 'Unnamed Test'),
+            "testType": data.get('testType', 'custom'),
+            "subjects": data.get('subjects', []),
+            "totalQuestions": data.get('totalQuestions', 0),
+            "results": {
+                "score": data.get('results', {}).get('score', 0),
+                "total": data.get('results', {}).get('total', 0),
+                "percentage": data.get('results', {}).get('percentage', 0),
+                "details": data.get('results', {}).get('details', []),
+                "subjectWiseResults": data.get('results', {}).get('subjectWiseResults', {})
+            },
+            "timeTaken": data.get('timeTaken', 0),
+            "timeLimit": data.get('timeLimit', 0),
+            "completedAt": data.get('completedAt'),
+            "createdAt": data.get('createdAt', datetime.now(timezone.utc).isoformat())
+        }
+
+        result = db.test_results.insert_one(test_result)
+        
+        print(f"Test result saved with ID: {result.inserted_id}")
+        
+        return jsonify({
+            "message": "Test result saved successfully",
+            "resultId": str(result.inserted_id)
+        }), 200
+        
+    except Exception as e:
+        print(f"Error saving test result: {str(e)}")
+        return jsonify({"error": f"Failed to save test result: {str(e)}"}), 500
 @app.route('/api/test-history', methods=['POST'])
 def get_test_history():
     user_id = request.json.get('userId')
@@ -190,7 +207,7 @@ def get_test_history():
             "subjects": test["subjects"],
             "totalQuestions": test["totalQuestions"],
             "timeLimit": test["timeLimit"],
-            "questions": test["questions"],  # Include questions
+            "questions": test["questions"], 
             "createdAt": test["createdAt"].isoformat(),
             "score": test.get("score"),
             "total": test.get("total"),
@@ -485,6 +502,131 @@ def parse_mcq_string(mcq_str):
         "answer": answer
     }
 
+@app.route('/api/user-test-results/<user_id>', methods=['GET'])
+def get_user_test_results(user_id):
+    try:
+       
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 10))
+        skip = (page - 1) * limit
+     
+        results = list(db.test_results.find(
+            {"userId": user_id}
+        ).sort("completedAt", -1).skip(skip).limit(limit))
+        
+        for result in results:
+            result['_id'] = str(result['_id'])
+       
+            if 'completedAt' not in result or result['completedAt'] is None:
+                result['completedAt'] = result.get('createdAt', datetime.now(timezone.utc))
+            if 'timeTaken' not in result:
+                result['timeTaken'] = 0
+            if 'results' not in result:
+                result['results'] = {'score': 0, 'total': 0, 'percentage': 0}
+            if 'totalQuestions' not in result:
+                result['totalQuestions'] = result.get('results', {}).get('total', 0)
+       
+        total_count = db.test_results.count_documents({"userId": user_id})
+        
+        return jsonify({
+            "results": results,
+            "pagination": {
+                "current_page": page,
+                "total_pages": (total_count + limit - 1) // limit,
+                "total_results": total_count,
+                "has_next": skip + limit < total_count,
+                "has_prev": page > 1
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"Error fetching user test results: {str(e)}")
+        return jsonify({"error": f"Failed to fetch test results: {str(e)}"}), 500
+@app.route('/api/user-stats/<user_id>', methods=['GET'])
+def get_user_stats(user_id):
+    try:
+      
+        pipeline = [
+            {"$match": {"userId": user_id}},
+            {"$group": {
+                "_id": "$userId",
+                "totalTests": {"$sum": 1},
+                "averageScore": {"$avg": "$results.percentage"},
+                "totalQuestions": {"$sum": "$totalQuestions"},
+                "totalTimeTaken": {"$sum": "$timeTaken"},
+                "bestScore": {"$max": "$results.percentage"},
+                "recentTests": {"$push": {
+                    "testName": "$testName",
+                    "score": "$results.percentage",
+                    "completedAt": "$completedAt",
+                    "subjects": "$subjects"
+                }}
+            }}
+        ]
+        
+        stats = list(db.test_results.aggregate(pipeline))
+        
+        if not stats:
+            return jsonify({
+                "totalTests": 0,
+                "averageScore": 0,
+                "totalQuestions": 0,
+                "totalTimeTaken": 0,
+                "bestScore": 0,
+                "recentTests": [],
+                "subjectPerformance": []
+            }), 200
+        
+        user_stats = stats[0]
+        
+    
+        user_stats["averageScore"] = user_stats.get("averageScore") or 0
+        user_stats["bestScore"] = user_stats.get("bestScore") or 0
+        user_stats["totalTimeTaken"] = user_stats.get("totalTimeTaken") or 0
+        
+        subject_pipeline = [
+            {"$match": {"userId": user_id}},
+            {"$unwind": "$subjects"},
+            {"$group": {
+                "_id": "$subjects",
+                "averageScore": {"$avg": "$results.percentage"},
+                "testCount": {"$sum": 1}
+            }}
+        ]
+        
+        subject_stats = list(db.test_results.aggregate(subject_pipeline))
+        
+        return jsonify({
+            "totalTests": user_stats.get("totalTests", 0),
+            "averageScore": round(user_stats.get("averageScore", 0), 2),
+            "totalQuestions": user_stats.get("totalQuestions", 0),
+            "totalTimeTaken": user_stats.get("totalTimeTaken", 0),
+            "bestScore": round(user_stats.get("bestScore", 0), 2),
+            "recentTests": user_stats.get("recentTests", [])[-5:], 
+            "subjectPerformance": subject_stats
+        }), 200
+        
+    except Exception as e:
+        print(f"Error fetching user stats: {str(e)}")
+        return jsonify({"error": f"Failed to fetch user stats: {str(e)}"}), 500
+
+@app.route('/api/test-result/<result_id>', methods=['GET'])
+def get_test_result_details(result_id):
+    try:
+        from bson.objectid import ObjectId
+        
+        result = db.test_results.find_one({"_id": ObjectId(result_id)})
+        
+        if not result:
+            return jsonify({"error": "Test result not found"}), 404
+        
+        result['_id'] = str(result['_id'])
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        print(f"Error fetching test result details: {str(e)}")
+        return jsonify({"error": f"Failed to fetch test result: {str(e)}"}), 500
 @app.route('/api/evaluate', methods=['POST'])
 def evaluate():
     request_data = request.json
