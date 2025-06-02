@@ -4,142 +4,149 @@ import Navbar from "./navbar";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-white dark:bg-[#142850] text-gray-900 dark:text-gray-100">
+    <div className="min-h-screen bg-white text-gray-900 font-mono relative overflow-hidden">
       <Navbar />
 
+      {/* Floating SVG Decorations */}
+      <div className="absolute top-0 left-0 w-full h-full z-0 pointer-events-none overflow-hidden">
+        <svg className="absolute animate-bounce w-32 h-32 text-pink-500 top-10 left-10 opacity-20" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /></svg>
+        <svg className="absolute animate-ping w-24 h-24 text-yellow-400 bottom-20 right-20 opacity-20" fill="currentColor" viewBox="0 0 24 24"><rect width="20" height="20" x="2" y="2" rx="5" /></svg>
+      </div>
+
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-[#0C7B93] to-[#00A8CC] text-white py-20 px-6 md:px-20">
+      <section className="relative z-10 bg-gradient-to-r from-pink-500 to-yellow-400 text-white py-20 px-6 md:px-20">
         <div className="max-w-6xl mx-auto flex flex-col-reverse md:flex-row items-center gap-10">
           <div className="md:w-1/2">
-            <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-6">
-              Master JEE Mains with Confidence
+            <h1 className="text-5xl font-bold leading-tight mb-6 drop-shadow-lg">
+              Crack JEE with Confidence
             </h1>
-            <p className="text-lg md:text-xl mb-8 leading-relaxed">
-              Access expertly crafted mock tests, curated notes, and personalized progress tracking — all designed to help you ace the JEE Mains exam.
+            <p className="text-lg md:text-xl mb-8 leading-relaxed text-white/90">
+              Mock tests, smart notes, and progress tools built to help you top JEE Mains — all in one vibrant platform.
             </p>
             <a
               href="/mockTests"
-              className="inline-block bg-white text-[#0C7B93] font-semibold px-8 py-3 rounded-lg shadow-lg hover:bg-gray-100 transition"
+              className="inline-block bg-white text-pink-600 font-bold px-8 py-3 rounded-full shadow-lg hover:scale-105 hover:bg-yellow-100 transition"
             >
-              Get Started Free
+              Start Practicing
             </a>
           </div>
-
           <div className="md:w-1/2">
             <img
               src="/students.png"
-              alt="Students studying for exams"
-              className="w-full max-w-md mx-auto"
+              alt="Students studying"
+              className="w-full max-w-md mx-auto animate-fade-in"
               loading="lazy"
             />
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 px-6 md:px-20 bg-gray-50 dark:bg-[#27496D]">
+      {/* Features */}
+      <section className="py-20 px-6 md:px-20 bg-white">
         <div className="max-w-6xl mx-auto text-center mb-16">
-          <h2 className="text-3xl font-bold mb-4 text-[#142850] dark:text-white">Why Choose JEE Ace?</h2>
-          <p className="text-gray-700 dark:text-gray-300 max-w-2xl mx-auto">
-            Our platform is crafted to provide the best learning experience tailored specifically for JEE aspirants.
+          <h2 className="text-4xl font-bold text-pink-600 mb-4">Why You'll Love It</h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Every tool is designed to help you learn faster and perform better — no fluff, just results.
           </p>
         </div>
 
-        <div className="max-w-6xl mx-auto grid gap-10 md:grid-cols-3">
+        <div className="grid gap-10 md:grid-cols-3 max-w-6xl mx-auto">
           {[
-            { title: "Mock Tests", desc: "Take unlimited, timed mock tests that mimic the real JEE Mains environment to sharpen your skills." },
-            { title: "Curated Notes", desc: "Study from concise, expert-curated notes covering all key topics for efficient revision." },
-            { title: "Progress Tracking", desc: "Monitor your improvement with detailed performance analytics and daily practice goals." }
+            {
+              title: "Dynamic Mock Tests",
+              desc: "Simulate the JEE environment with real-time scoring and time tracking.",
+            },
+            {
+              title: "Bite-sized Notes",
+              desc: "Clean, curated notes that cover the syllabus without the clutter.",
+            },
+            {
+              title: "Track & Improve",
+              desc: "Get visual feedback on your weak areas and improve strategically.",
+            },
           ].map(({ title, desc }, i) => (
             <div
               key={i}
-              className="bg-white dark:bg-[#0C7B93] text-gray-800 dark:text-white p-8 rounded-lg shadow-md hover:shadow-xl transition"
+              className="bg-white border border-yellow-300 shadow-md rounded-xl p-8 hover:shadow-xl transition duration-300"
             >
-              <h3 className="text-xl font-semibold mb-3">{title}</h3>
-              <p className="text-gray-600 dark:text-gray-100">{desc}</p>
+              <h3 className="text-xl font-semibold text-pink-600 mb-3">{title}</h3>
+              <p className="text-gray-700">{desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-20 px-6 md:px-20">
+      {/* Testimonials */}
+      <section className="py-20 px-6 md:px-20 bg-yellow-50">
         <div className="max-w-6xl mx-auto text-center mb-16">
-          <h2 className="text-3xl font-bold mb-4 text-[#142850] dark:text-white">What Our Users Say</h2>
-          <p className="text-gray-700 dark:text-gray-300 max-w-2xl mx-auto">
-            Hear from some of our successful JEE aspirants who achieved their goals with JEE Ace.
+          <h2 className="text-4xl font-bold text-pink-600 mb-4">Student Stories</h2>
+          <p className="text-gray-700 max-w-2xl mx-auto">
+            Real feedback from real students who used JEE Ace to ace their exams.
           </p>
         </div>
 
-        <div className="max-w-6xl mx-auto grid gap-10 md:grid-cols-3">
+        <div className="grid gap-10 md:grid-cols-3 max-w-6xl mx-auto">
           {[
             {
               name: "Anjali Sharma",
               feedback:
-                "The mock tests helped me simulate the exam day perfectly. I improved my time management significantly!",
+                "Mock tests were spot on! Practicing daily with them helped me avoid silly mistakes and stress.",
               img: "/avatar.png",
             },
             {
               name: "Rohit Verma",
               feedback:
-                "Curated notes made my revision much easier and faster. The progress tracker kept me motivated every day.",
+                "Their progress tracker kept me focused and their notes saved me hours. Super helpful!",
               img: "/avatar.png",
             },
             {
               name: "Sneha Patel",
               feedback:
-                "The platform is intuitive and the support team is amazing. Highly recommend it to every JEE aspirant!",
+                "Clean UI, no distractions, and everything just works. Highly recommended for any JEE aspirant.",
               img: "/avatar.png",
             },
           ].map(({ name, feedback, img }, i) => (
             <div
               key={i}
-              className="bg-gray-50 dark:bg-[#27496D] p-8 rounded-lg shadow-md hover:shadow-lg transition flex flex-col items-center text-center"
+              className="bg-white border border-pink-200 p-8 rounded-xl shadow-md hover:shadow-lg transition text-center"
             >
               <img
                 src={img}
                 alt={name}
-                className="w-20 h-20 rounded-full mb-4 object-cover"
-                loading="lazy"
+                className="w-20 h-20 rounded-full mx-auto mb-4 object-cover"
               />
-              <p className="mb-4 text-gray-700 dark:text-gray-100">&quot;{feedback}&quot;</p>
-              <h4 className="font-semibold text-lg text-[#0C7B93] dark:text-[#00A8CC]">{name}</h4>
+              <p className="mb-4 text-gray-700 italic">“{feedback}”</p>
+              <h4 className="font-semibold text-pink-600 text-lg">{name}</h4>
             </div>
           ))}
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#142850] text-gray-300 py-10 px-6 md:px-20">
+      <footer className="bg-pink-600 text-white py-10 px-6 md:px-20">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0">
           <div className="text-center md:text-left">
-            <h3 className="text-xl font-bold text-white mb-2">JEE Ace</h3>
+            <h3 className="text-xl font-bold mb-2">JEE Ace</h3>
             <p className="text-sm max-w-xs">
-              Empowering JEE aspirants with the best tools and resources to achieve success.
+              Your complete JEE companion — practice smart, revise better, and track your growth.
             </p>
           </div>
 
           <div className="flex space-x-4">
-            {[
-              { href: "https://twitter.com", label: "Twitter" },
-              { href: "https://facebook.com", label: "Facebook" },
-              { href: "https://linkedin.com", label: "LinkedIn" },
-            ].map(({ href, label }, idx) => (
+            {["Twitter", "LinkedIn", "YouTube"].map((label, idx) => (
               <a
                 key={idx}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
+                href="#"
                 aria-label={label}
-                className="hover:text-white transition"
+                className="hover:text-yellow-300 transition"
               >
-                {/* Add corresponding SVGs here */}
+                {label}
               </a>
             ))}
           </div>
         </div>
 
-        <div className="mt-8 text-center text-sm text-gray-400">
+        <div className="mt-8 text-center text-sm text-pink-100">
           &copy; {new Date().getFullYear()} JEE Ace. All rights reserved.
         </div>
       </footer>

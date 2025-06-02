@@ -75,9 +75,9 @@ export default function TakeTest() {
   };
 
   const getTimeColor = () => {
-    if (timeLeft <= 300) return "text-red-400"; 
-    if (timeLeft <= 900) return "text-orange-400"; 
-    return "text-emerald-400";
+    if (timeLeft <= 300) return "text-red-500"; 
+    if (timeLeft <= 900) return "text-orange-500"; 
+    return "text-green-600";
   };
 
   const getQuestionsBySubject = () => {
@@ -225,11 +225,11 @@ export default function TakeTest() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-yellow-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-white text-xl font-semibold">Checking authentication...</div>
-          <div className="text-slate-400 mt-2">Please wait</div>
+          <div className="w-16 h-16 border-4 border-magenta-200 border-t-magenta-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-gray-800 text-xl font-semibold">Checking authentication...</div>
+          <div className="text-gray-600 mt-2">Please wait</div>
         </div>
       </div>
     );
@@ -237,11 +237,11 @@ export default function TakeTest() {
 
   if (!testData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-yellow-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-white text-xl font-semibold">Loading test...</div>
-          <div className="text-slate-400 mt-2">Please wait while we prepare your test</div>
+          <div className="w-16 h-16 border-4 border-magenta-200 border-t-magenta-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-gray-800 text-xl font-semibold">Loading test...</div>
+          <div className="text-gray-600 mt-2">Please wait while we prepare your test</div>
         </div>
       </div>
     );
@@ -256,39 +256,39 @@ export default function TakeTest() {
     return (
       <div>
         <Navbar />
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white">
+        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-yellow-50 p-6 text-gray-800">
           <div className="max-w-6xl mx-auto">
             {/* Results Header */}
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-500/20 rounded-full mb-4 border border-emerald-500/30">
-                <svg className="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-4 border-2 border-green-200 shadow-lg">
+                <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent mb-2">
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-magenta-600 to-purple-600 bg-clip-text text-transparent mb-2">
                 Test Completed!
               </h1>
-              <p className="text-slate-400 text-lg">Here are your results</p>
+              <p className="text-gray-600 text-lg">Here are your results</p>
               {user && (
-                <p className="text-slate-500 text-sm mt-2">
+                <p className="text-gray-500 text-sm mt-2">
                   Results saved for {user.email}
                 </p>
               )}
             </div>
 
             {/* Overall Score Card */}
-            <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-8 mb-8 shadow-2xl">
+            <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-gray-200 p-8 mb-8 shadow-2xl">
               <div className="text-center mb-6">
                 <div className={`text-7xl font-bold mb-4 ${
-                  overallPercentage >= 80 ? 'text-emerald-400' :
-                  overallPercentage >= 60 ? 'text-yellow-400' : 'text-red-400'
+                  overallPercentage >= 80 ? 'text-green-600' :
+                  overallPercentage >= 60 ? 'text-yellow-600' : 'text-red-500'
                 }`}>
                   {testResults.score}/{testResults.total}
                 </div>
-                <div className="text-3xl font-semibold text-slate-200 mb-2">
+                <div className="text-3xl font-semibold text-gray-800 mb-2">
                   Overall Score: {overallPercentage}%
                 </div>
-                <div className="text-slate-400">
+                <div className="text-gray-600">
                   Time Taken: {timeTakenFormatted} / {formatTime(testData.timeLimit * 60)}
                 </div>
               </div>
@@ -296,15 +296,15 @@ export default function TakeTest() {
               {/* Subject-wise Performance */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {Object.entries(subjectStats).map(([subject, stats]) => (
-                  <div key={subject} className="bg-slate-700/30 rounded-xl p-6 text-center border border-slate-600/30">
+                  <div key={subject} className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-6 text-center border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
                     <div className="text-3xl mb-3">{getSubjectIcon(subject)}</div>
-                    <div className="text-lg font-semibold text-slate-200 mb-2">{subject}</div>
-                    <div className="text-3xl font-bold text-blue-400 mb-2">
+                    <div className="text-lg font-semibold text-gray-800 mb-2">{subject}</div>
+                    <div className="text-3xl font-bold text-magenta-600 mb-2">
                       {stats.correct}/{stats.total}
                     </div>
                     <div className={`text-lg font-medium ${
-                      stats.percentage >= 80 ? 'text-emerald-400' :
-                      stats.percentage >= 60 ? 'text-yellow-400' : 'text-red-400'
+                      stats.percentage >= 80 ? 'text-green-600' :
+                      stats.percentage >= 60 ? 'text-yellow-600' : 'text-red-500'
                     }`}>
                       {stats.percentage}%
                     </div>
@@ -317,13 +317,13 @@ export default function TakeTest() {
             <div className="text-center space-x-4">
               <button
                 onClick={() => router.push('/mockTests')}
-                className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+                className="px-8 py-3 bg-gradient-to-r from-magenta-500 to-purple-500 hover:from-magenta-600 hover:to-purple-600 text-white rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
               >
                 Create New Test
               </button>
               <button
                 onClick={() => router.push('/')}
-                className="px-8 py-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl font-semibold text-lg transition-all duration-300 border border-slate-600/50 hover:border-slate-500/50"
+                className="px-8 py-3 bg-white hover:bg-gray-50 text-gray-800 rounded-2xl font-semibold text-lg transition-all duration-300 border border-gray-300 hover:border-gray-400 shadow-lg hover:shadow-xl"
               >
                 Go Home
               </button>
@@ -346,48 +346,48 @@ export default function TakeTest() {
       
       {/* Time Warning Modal */}
       {showWarning && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-slate-800 rounded-2xl p-8 border border-red-500/50 shadow-2xl max-w-md mx-4">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-3xl p-8 border border-red-200 shadow-2xl max-w-md mx-4">
             <div className="text-center">
-              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-red-400 mb-2">Time Warning!</h3>
-              <p className="text-slate-300">Only 5 minutes remaining!</p>
+              <h3 className="text-xl font-bold text-red-500 mb-2">Time Warning!</h3>
+              <p className="text-gray-700">Only 5 minutes remaining!</p>
             </div>
           </div>
         </div>
       )}
 
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 text-white">
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-yellow-50 p-4 text-gray-800">
         {/* Top Header with Timer and Progress */}
         <div className="max-w-7xl mx-auto mb-6">
-          <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6 shadow-xl">
+          <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-gray-200/50 p-6 shadow-xl">
             <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
               {/* Timer */}
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span className="text-slate-400 font-medium">Time Left:</span>
+                  <span className="text-gray-600 font-medium">Time Left:</span>
                 </div>
-                <div className={`text-2xl font-bold ${getTimeColor()} ${timeLeft <= 300 ? 'animate-pulse' : ''}`}>
+                <div className={`text-2xl font-bold ${getTimeColor()} ${timeLeft <= 300 ? 'animate-pulse' : ''} bg-white px-4 py-2 rounded-2xl shadow-md border`}>
                   {formatTime(timeLeft)}
                 </div>
               </div>
 
               {/* Progress Bar */}
               <div className="flex-1 max-w-md">
-                <div className="flex justify-between text-sm text-slate-400 mb-2">
+                <div className="flex justify-between text-sm text-gray-600 mb-2">
                   <span>Progress</span>
                   <span>{answeredCount}/{totalQuestions}</span>
                 </div>
-                <div className="w-full bg-slate-700/50 rounded-full h-3">
+                <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
                   <div 
-                    className="bg-gradient-to-r from-blue-500 to-emerald-500 h-3 rounded-full transition-all duration-300"
+                    className="bg-gradient-to-r from-magenta-500 to-purple-500 h-3 rounded-full transition-all duration-300 shadow-sm"
                     style={{ width: `${progressPercentage}%` }}
                   ></div>
                 </div>
@@ -397,10 +397,10 @@ export default function TakeTest() {
               <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => setCurrentSubject("All")}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  className={`px-4 py-2 rounded-2xl text-sm font-medium transition-all duration-300 shadow-md hover:shadow-lg ${
                     currentSubject === "All" 
-                      ? "bg-white text-slate-900 shadow-lg" 
-                      : "bg-slate-700/50 hover:bg-slate-600/50 border border-slate-600/50"
+                      ? "bg-gradient-to-r from-magenta-500 to-purple-500 text-white" 
+                      : "bg-white hover:bg-gray-50 border border-gray-300 text-gray-700"
                   }`}
                 >
                   All ({testData.questions.length})
@@ -412,10 +412,10 @@ export default function TakeTest() {
                       setCurrentSubject(subject);
                       setCurrentQuestionIndex(0);
                     }}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2 ${
+                    className={`px-4 py-2 rounded-2xl text-sm font-medium transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg ${
                       currentSubject === subject 
-                        ? "bg-white text-slate-900 shadow-lg" 
-                        : "bg-slate-700/50 hover:bg-slate-600/50 border border-slate-600/50"
+                        ? "bg-gradient-to-r from-magenta-500 to-purple-500 text-white" 
+                        : "bg-white hover:bg-gray-50 border border-gray-300 text-gray-700"
                     }`}
                   >
                     <span>{getSubjectIcon(subject)}</span>
@@ -428,7 +428,7 @@ export default function TakeTest() {
               <button
                 onClick={handleSubmitTest}
                 disabled={isLoading}
-                className="px-6 py-3 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:transform-none shadow-lg"
+                className="px-6 py-3 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:transform-none shadow-lg hover:shadow-xl"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
@@ -447,8 +447,8 @@ export default function TakeTest() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Question Navigation Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6 shadow-xl">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-gray-200/50 p-6 shadow-xl">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
                 <span>{currentSubject === "All" ? "📚" : getSubjectIcon(currentSubject)}</span>
                 {currentSubject} Questions ({currentQuestions.length})
               </h3>
@@ -464,12 +464,12 @@ export default function TakeTest() {
                     <button
                       key={index}
                       onClick={() => setCurrentQuestionIndex(index)}
-                      className={`aspect-square rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-110 ${
+                      className={`aspect-square rounded-2xl text-sm font-medium transition-all duration-300 transform hover:scale-110 shadow-md hover:shadow-lg ${
                         isCurrent
-                          ? "bg-blue-500 text-white shadow-lg shadow-blue-500/25"
+                          ? "bg-gradient-to-r from-magenta-500 to-purple-500 text-white"
                           : isAnswered
-                          ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25"
-                          : "bg-slate-700/50 hover:bg-slate-600/50 border border-slate-600/30 hover:border-slate-500/50"
+                          ? "bg-gradient-to-r from-yellow-400 to-yellow-500 text-white"
+                          : "bg-white hover:bg-gray-50 border border-gray-300 text-gray-700"
                       }`}
                     >
                       {index + 1}
@@ -481,16 +481,16 @@ export default function TakeTest() {
               {/* Legend */}
               <div className="mt-4 space-y-2 text-sm">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                  <span className="text-slate-400">Current</span>
+                  <div className="w-4 h-4 bg-gradient-to-r from-magenta-500 to-purple-500 rounded-lg"></div>
+                  <span className="text-gray-600">Current</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-emerald-500 rounded"></div>
-                  <span className="text-slate-400">Answered</span>
+                  <div className="w-4 h-4 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-lg"></div>
+                  <span className="text-gray-600">Answered</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-slate-700 border border-slate-600 rounded"></div>
-                  <span className="text-slate-400">Not Answered</span>
+                  <div className="w-4 h-4 bg-white border border-gray-300 rounded-lg"></div>
+                  <span className="text-gray-600">Not Answered</span>
                 </div>
               </div>
             </div>
@@ -498,33 +498,33 @@ export default function TakeTest() {
 
           {/* Question Content */}
           <div className="lg:col-span-3">
-            <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-8 shadow-xl">
+            <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-gray-200/50 p-8 shadow-xl">
               {currentQuestion ? (
                 <>
                   {/* Question Header */}
                   <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{getSubjectIcon(currentQuestion.subject)}</span>
-                      <span className="text-sm bg-slate-700/50 px-3 py-1 rounded-full border border-slate-600/30">
+                      <span className="text-sm bg-gradient-to-r from-magenta-100 to-purple-100 text-magenta-700 px-3 py-1 rounded-full border border-magenta-200">
                         {currentQuestion.subject}
                       </span>
                     </div>
-                    <span className="text-sm text-slate-400 font-medium">
+                    <span className="text-sm text-gray-600 font-medium bg-white px-3 py-1 rounded-full border border-gray-200">
                       Question {currentQuestionIndex + 1} of {currentQuestions.length}
                     </span>
                   </div>
 
                   {/* Question Content */}
                   <div className="mb-8">
-                    <h2 className="text-xl font-medium mb-6 text-slate-200 leading-relaxed">
+                    <h2 className="text-xl font-medium mb-6 text-gray-800 leading-relaxed">
                       {currentQuestion.question}
                     </h2>
                     {currentQuestion.image_data && (
-                      <div className="mb-6 bg-slate-700/30 rounded-xl p-4 border border-slate-600/30">
+                      <div className="mb-6 bg-gray-50 rounded-2xl p-4 border border-gray-200">
                         <img
                           src={currentQuestion.image_data}
                           alt="Question diagram"
-                          className="max-w-full h-auto rounded-lg mx-auto"
+                          className="max-w-full h-auto rounded-xl mx-auto shadow-md"
                         />
                       </div>
                     )}
@@ -543,10 +543,10 @@ export default function TakeTest() {
                       return (
                         <label
                           key={optionIndex}
-                          className={`group flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all duration-300 ${
+                          className={`group flex items-start gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
                             isSelected
-                              ? "bg-blue-500/20 border-2 border-blue-500/50 shadow-lg shadow-blue-500/10"
-                              : "bg-slate-700/30 hover:bg-slate-600/30 border-2 border-slate-600/30 hover:border-slate-500/50"
+                              ? "bg-gradient-to-r from-magenta-50 to-purple-50 border-2 border-magenta-300"
+                              : "bg-white hover:bg-gray-50 border-2 border-gray-200 hover:border-gray-300"
                           }`}
                         >
                           <input
@@ -555,16 +555,16 @@ export default function TakeTest() {
                             value={optionLabel}
                             checked={isSelected}
                             onChange={() => handleAnswerSelect(currentQuestionIndex, optionLabel)}
-                            className="mt-1 accent-blue-500 scale-125"
+                            className="mt-1 accent-magenta-500 scale-125"
                           />
                           <div className="flex-1">
                             <div className="flex items-start gap-3">
                               <span className={`font-bold text-lg ${
-                                isSelected ? 'text-blue-400' : 'text-slate-400'
+                                isSelected ? 'text-magenta-600' : 'text-gray-600'
                               }`}>
                                 {optionLabel}.
                               </span>
-                              <span className="text-slate-200 leading-relaxed">{option}</span>
+                              <span className="text-gray-800 leading-relaxed">{option}</span>
                             </div>
                           </div>
                         </label>
@@ -577,7 +577,7 @@ export default function TakeTest() {
                     <button
                       onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
                       disabled={currentQuestionIndex === 0}
-                      className="px-6 py-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed border border-slate-600/30 hover:border-slate-500/50 flex items-center gap-2"
+                      className="px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 rounded-2xl font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300 hover:border-gray-400 flex items-center gap-2 shadow-md hover:shadow-lg"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -591,7 +591,7 @@ export default function TakeTest() {
                         )
                       }
                       disabled={currentQuestionIndex === currentQuestions.length - 1}
-                      className="px-6 py-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed border border-slate-600/30 hover:border-slate-500/50 flex items-center gap-2"
+                      className="px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 rounded-2xl font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300 hover:border-gray-400 flex items-center gap-2 shadow-md hover:shadow-lg"
                     >
                       Next
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -603,8 +603,8 @@ export default function TakeTest() {
               ) : (
                 <div className="text-center py-12">
                   <div className="text-6xl mb-4">📚</div>
-                  <div className="text-xl text-slate-300">No questions available for {currentSubject}</div>
-                  <div className="text-slate-400 mt-2">Please select a different subject</div>
+                  <div className="text-xl text-gray-700">No questions available for {currentSubject}</div>
+                  <div className="text-gray-500 mt-2">Please select a different subject</div>
                 </div>
               )}
             </div>

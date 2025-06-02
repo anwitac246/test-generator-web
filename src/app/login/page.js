@@ -7,7 +7,7 @@ import {
   createUserWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "../lib/firebase-config";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRouter } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
 import Navbar from "../components/navbar";
 
@@ -17,7 +17,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const router = useRouter(); // Initialize router
+  const router = useRouter();
 
   const resetMessages = () => {
     setError("");
@@ -27,10 +27,9 @@ export default function AuthPage() {
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     resetMessages();
-
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push("/mockTests"); // Redirect to /mockTests on successful login
+      router.push("/mockTests");
     } catch (err) {
       if (err.code === "auth/user-not-found") {
         setError("No user found with this email.");
@@ -49,7 +48,7 @@ export default function AuthPage() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      router.push("/mockTests"); // Redirect to /mockTests on successful Google login
+      router.push("/mockTests");
     } catch {
       setError("Google login failed. Please try again.");
     }
@@ -58,7 +57,6 @@ export default function AuthPage() {
   const handleSignUp = async (e) => {
     e.preventDefault();
     resetMessages();
-
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       setSuccess("Account created successfully! You can now log in.");
@@ -79,24 +77,26 @@ export default function AuthPage() {
   };
 
   return (
-    <div>
+    <div className="min-h-screen bg-white font-poppins">
       <Navbar />
-      <div className="flex min-h-screen">
-        <div className="w-1/2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-12 flex flex-col justify-center">
-          <h1 className="text-4xl font-bold mb-6">JEE Mains Test Generator</h1>
-          <p className="text-lg">
-            Practice with mock tests tailored for JEE Mains, study from curated notes,
-            and track your performance to improve daily. Designed for serious
-            aspirants aiming for excellence.
+      <div className="flex flex-col lg:flex-row min-h-screen">
+        {/* Left Side - Banner */}
+        <div className="lg:w-1/2 bg-gradient-to-br from-[#d100b7] to-[#ffcb05] text-white p-12 flex flex-col justify-center rounded-br-[60px] shadow-lg">
+          <h1 className="text-5xl font-extrabold mb-6 leading-tight tracking-tight">JEE Mains Test Generator</h1>
+          <p className="text-lg font-medium">
+            Practice mock tests, read smart notes, and improve with intelligent performance tracking – built for serious aspirants.
           </p>
         </div>
-        <div className="w-1/2 flex flex-col items-center justify-center p-10">
-          <div className="w-full max-w-md">
-            <h2 className="text-3xl font-semibold mb-6 text-gray-800 dark:text-gray-100">
+
+        {/* Right Side - Auth Form */}
+        <div className="lg:w-1/2 flex items-center justify-center p-10">
+          <div className="w-full max-w-md space-y-6">
+            <h2 className="text-3xl font-bold text-gray-800">
               {isLogin ? "Login to Your Account" : "Create a New Account"}
             </h2>
-            {error && <p className="mb-4 text-red-600 text-sm">{error}</p>}
-            {success && <p className="mb-4 text-green-600 text-sm">{success}</p>}
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {success && <p className="text-green-600 text-sm">{success}</p>}
+
             <form
               onSubmit={isLogin ? handleEmailLogin : handleSignUp}
               className="space-y-4"
@@ -107,7 +107,7 @@ export default function AuthPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#d100b7] focus:outline-none placeholder-gray-600"
               />
               <input
                 type="password"
@@ -115,30 +115,34 @@ export default function AuthPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#d100b7] focus:outline-none placeholder-gray-600"
               />
               <button
                 type="submit"
-                className={`w-full py-2 rounded-md text-white transition ${
-                  isLogin ? "bg-blue-600 hover:bg-blue-700" : "bg-indigo-600 hover:bg-indigo-700"
-                }`}
+                className={`w-full py-3 rounded-xl text-white font-semibold transition ${isLogin
+                    ? "bg-[#d100b7] hover:bg-[#b4009d]"
+                    : "bg-yellow-500 hover:bg-yellow-600 text-gray-800"
+                  }`}
               >
                 {isLogin ? "Login" : "Sign Up"}
               </button>
             </form>
-            <div className="mt-6 flex items-center justify-center">
-              <div className="w-full border-t"></div>
-              <span className="px-4 text-gray-500">OR</span>
-              <div className="w-full border-t"></div>
+
+            <div className="flex items-center justify-center gap-4">
+              <div className="flex-1 h-px bg-gray-300" />
+              <span className="text-gray-500 text-sm">OR</span>
+              <div className="flex-1 h-px bg-gray-300" />
             </div>
+
             <button
               onClick={handleGoogleLogin}
-              className="mt-6 w-full border border-gray-300 flex items-center justify-center py-2 rounded-md hover:bg-gray-100 transition"
+              className="w-full py-3 flex items-center justify-center rounded-xl border border-gray-300 hover:bg-gray-100 transition text-gray-800"
             >
-              <FcGoogle className="mr-3 text-xl" />
+              <FcGoogle className="text-xl mr-3" />
               Continue with Google
             </button>
-            <p className="mt-6 text-center text-gray-600 dark:text-gray-400">
+
+            <p className="text-center text-sm text-gray-600">
               {isLogin ? (
                 <>
                   Don't have an account?{" "}
@@ -147,7 +151,7 @@ export default function AuthPage() {
                       resetMessages();
                       setIsLogin(false);
                     }}
-                    className="text-blue-600 hover:underline focus:outline-none"
+                    className="text-[#d100b7] font-semibold hover:underline"
                   >
                     Sign Up
                   </button>
@@ -160,7 +164,7 @@ export default function AuthPage() {
                       resetMessages();
                       setIsLogin(true);
                     }}
-                    className="text-blue-600 hover:underline focus:outline-none"
+                    className="text-[#d100b7] font-semibold hover:underline"
                   >
                     Log In
                   </button>
@@ -169,6 +173,7 @@ export default function AuthPage() {
             </p>
           </div>
         </div>
+
       </div>
     </div>
   );

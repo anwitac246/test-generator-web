@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import Navbar from '../components/navbar';
 
+
 const quickNotesData = [
   {
     id: 309,
@@ -22,7 +23,33 @@ const quickNotesData = [
     type: 'Summary',
     content: 'This would contain all important chemistry reactions.'
   },
-  // ... other notes
+  {
+    id: 308,
+    title: 'Calculus Derivatives',
+    description: 'Essential derivative formulas and rules',
+    subject: 'Mathematics',
+    topic: 'Calculus',
+    type: 'Formula Sheet',
+    content: 'Complete guide to derivative calculations and applications.'
+  },
+  {
+    id: 310,
+    title: 'Organic Reactions Map',
+    description: 'Visual guide to organic chemistry reactions',
+    subject: 'Chemistry',
+    topic: 'Organic Chemistry',
+    type: 'Concept Map',
+    content: 'Interactive map showing reaction pathways and mechanisms.'
+  },
+  {
+    id: 311,
+    title: 'Physics Problem Tips',
+    description: 'Strategy guide for solving physics problems',
+    subject: 'Physics',
+    topic: 'Problem Solving',
+    type: 'Tips & Tricks',
+    content: 'Step-by-step approach to tackle complex physics problems.'
+  }
 ];
 
 const subjects = ['All', 'Physics', 'Chemistry', 'Mathematics'];
@@ -68,128 +95,160 @@ const Notes = () => {
   };
 
   return (
-    <div>
-        <Navbar/>
-    
-    <div className="flex h-screen bg-gray-900 text-white font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
+      <Navbar/>
       
+      <div className="flex h-screen bg-gradient-to-br from-pink-50 to-purple-50">
+        {/* Main Content */}
+        <main className="flex-1 p-8 overflow-y-auto">
+          <header className="mb-8">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+              Quick Notes
+            </h1>
+            <p className="text-gray-600 mt-2 text-lg">Fast reference for key concepts and formulas</p>
+          </header>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6 overflow-y-auto">
-        <header className="mb-6">
-          <h1 className="text-3xl font-bold text-blue-400">Quick Notes</h1>
-          <p className="text-gray-400">Fast reference for key concepts and formulas</p>
-        </header>
-
-        {/* Filters */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <input
-            type="text"
-            placeholder="Search notes"
-            className="bg-gray-800 text-white border border-gray-600 rounded px-4 py-2 w-full md:w-1/3 focus:ring-2 focus:ring-blue-400 transition"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <div className="flex gap-4">
-            <select
-              value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              className="bg-gray-800 text-white border border-gray-600 rounded px-4 py-2"
-            >
-              {subjects.map(subject => <option key={subject}>{subject}</option>)}
-            </select>
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="bg-gray-800 text-white border border-gray-600 rounded px-4 py-2"
-            >
-              {noteTypes.map(type => <option key={type}>{type}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-6">
-          <nav className="flex space-x-4 border-b border-gray-700">
-            {[
-              { id: 'all', label: 'All Notes' },
-              { id: 'formulas', label: 'Formula Sheets' },
-              { id: 'summaries', label: 'Summaries' },
-              { id: 'favorites', label: 'Favorites' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-2 px-4 transition duration-300 ${
-                  activeTab === tab.id
-                    ? 'border-b-2 border-blue-400 text-blue-400'
-                    : 'text-gray-400 hover:text-white'
-                }`}
+          {/* Filters */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+            <input
+              type="text"
+              placeholder="Search notes..."
+              className="bg-white text-gray-800 border-2 border-pink-200 rounded-2xl px-6 py-3 w-full md:w-1/3 focus:ring-4 focus:ring-pink-300 focus:border-pink-400 transition-all duration-300 shadow-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <div className="flex gap-4">
+              <select
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                className="bg-white text-gray-800 border-2 border-pink-200 rounded-2xl px-6 py-3 focus:ring-4 focus:ring-pink-300 focus:border-pink-400 transition-all duration-300 shadow-sm"
               >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
+                {subjects.map(subject => <option key={subject}>{subject}</option>)}
+              </select>
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="bg-white text-gray-800 border-2 border-pink-200 rounded-2xl px-6 py-3 focus:ring-4 focus:ring-pink-300 focus:border-pink-400 transition-all duration-300 shadow-sm"
+              >
+                {noteTypes.map(type => <option key={type}>{type}</option>)}
+              </select>
+            </div>
+          </div>
 
-        {/* Notes Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {getTabNotes().map(note => (
-            <div
-              key={note.id}
-              className="bg-gray-800 rounded-lg shadow-lg p-4 hover:shadow-2xl transition duration-300"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-white">{note.title}</h3>
-                  <p className="text-sm text-gray-400">{note.description}</p>
-                </div>
+          {/* Tabs */}
+          <div className="mb-8">
+            <nav className="flex space-x-6 border-b-2 border-pink-200 pb-2">
+              {[
+                { id: 'all', label: 'All Notes' },
+                { id: 'formulas', label: 'Formula Sheets' },
+                { id: 'summaries', label: 'Summaries' },
+                { id: 'favorites', label: 'Favorites' },
+              ].map(tab => (
                 <button
-                  onClick={() => toggleFavorite(note.id)}
-                  className={`ml-2 text-xl transition ${
-                    favorites.includes(note.id) ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400'
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`py-3 px-6 rounded-2xl transition-all duration-300 font-medium ${
+                    activeTab === tab.id
+                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
+                      : 'text-gray-600 hover:text-pink-600 hover:bg-pink-50'
                   }`}
-                  aria-label="Toggle Favorite"
                 >
-                  {favorites.includes(note.id) ? '★' : '☆'}
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {/* Notes Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {getTabNotes().map(note => (
+              <div
+                key={note.id}
+                className="bg-white rounded-3xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-pink-100"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">{note.title}</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">{note.description}</p>
+                  </div>
+                  <button
+                    onClick={() => toggleFavorite(note.id)}
+                    className={`ml-3 text-2xl transition-all duration-300 hover:scale-110 ${
+                      favorites.includes(note.id) 
+                        ? 'text-yellow-500 drop-shadow-lg' 
+                        : 'text-gray-300 hover:text-yellow-400'
+                    }`}
+                    aria-label="Toggle Favorite"
+                  >
+                    {favorites.includes(note.id) ? '★' : '☆'}
+                  </button>
+                </div>
+                
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center">
+                    <span className="font-semibold text-pink-600 min-w-[70px]">Subject:</span>
+                    <span className="text-gray-700">{note.subject}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="font-semibold text-pink-600 min-w-[70px]">Topic:</span>
+                    <span className="text-gray-700">{note.topic}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="font-semibold text-pink-600 min-w-[70px]">Type:</span>
+                    <span className="inline-block bg-gradient-to-r from-pink-100 to-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+                      {note.type}
+                    </span>
+                  </div>
+                </div>
+                
+                <p className="text-gray-600 text-sm leading-relaxed mb-4 bg-gray-50 p-3 rounded-2xl">
+                  {note.content}
+                </p>
+                
+                {note.link && (
+                  <button
+                    onClick={() => setPreviewLink(note.link)}
+                    className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-6 py-3 rounded-2xl transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+                  >
+                    Preview Document
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {getTabNotes().length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">📚</div>
+              <h3 className="text-2xl font-bold text-gray-600 mb-2">No notes found</h3>
+              <p className="text-gray-500">Try adjusting your search or filters</p>
+            </div>
+          )}
+        </main>
+
+        {/* Preview Modal */}
+        {previewLink && (
+          <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-6xl h-5/6 relative">
+              <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-4 flex items-center justify-between">
+                <h3 className="text-white font-bold text-lg">Document Preview</h3>
+                <button
+                  onClick={() => setPreviewLink(null)}
+                  className="text-white hover:text-yellow-300 text-3xl font-bold transition-colors duration-300 hover:scale-110 transform"
+                >
+                  ×
                 </button>
               </div>
-              <p><strong>Subject:</strong> {note.subject}</p>
-              <p><strong>Topic:</strong> {note.topic}</p>
-              <p><strong>Type:</strong> {note.type}</p>
-              <p className="text-gray-300 mt-2">{note.content}</p>
-              {note.link && (
-                <button
-                  onClick={() => setPreviewLink(note.link)}
-                  className="mt-3 inline-block bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition"
-                >
-                  Preview
-                </button>
-              )}
+              <iframe
+                src={previewLink}
+                title="Preview"
+                className="w-full h-full"
+              />
             </div>
-          ))}
-        </div>
-      </main>
-
-      {/* Preview Modal */}
-      {previewLink && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center">
-          <div className="bg-gray-900 rounded-lg shadow-lg overflow-hidden w-11/12 h-5/6 relative">
-            <button
-              onClick={() => setPreviewLink(null)}
-              className="absolute top-2 right-2 text-white text-2xl z-10"
-            >
-              &times;
-            </button>
-            <iframe
-              src={previewLink}
-              title="Preview"
-              className="w-full h-full"
-            />
           </div>
-        </div>
-      )}
-    </div></div>
+        )}
+      </div>
+    </div>
   );
 };
 
