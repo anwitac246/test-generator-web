@@ -80,22 +80,54 @@ export default function AuthPage() {
     <div className="min-h-screen bg-white font-poppins">
       <Navbar />
       <div className="flex flex-col lg:flex-row min-h-screen">
-        {/* Left Side - Banner */}
-        <div className="lg:w-1/2 bg-gradient-to-br from-[#d100b7] to-[#ffcb05] text-white p-12 flex flex-col justify-center rounded-br-[60px] shadow-lg">
-          <h1 className="text-5xl font-extrabold mb-6 leading-tight tracking-tight">JEE Mains Test Generator</h1>
-          <p className="text-lg font-medium">
-            Practice mock tests, read smart notes, and improve with intelligent performance tracking – built for serious aspirants.
-          </p>
+        <div className="flex-1 bg-white flex items-center justify-center px-8 py-16 lg:py-24">
+          <div className="max-w-2xl text-center lg:text-left">
+            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+              Master Your
+              <span className="bg-gradient-to-r from-[#FA812F] to-[#F3C623] bg-clip-text text-transparent"> JEE Journey</span>
+            </h1>
+
+            <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+              Your Ultimate Destination for IIT JEE Preparation
+            </p>
+
+            <div className="space-y-4 text-gray-700">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-[#FA812F] flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <p>Comprehensive mock tests for Physics, Chemistry & Mathematics</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-[#F3C623] flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <p>Detailed performance analysis and rank predictions</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-[#FA812F] flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <p>Expert solutions and personalized study recommendations</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Right Side - Auth Form */}
-        <div className="lg:w-1/2 flex items-center justify-center p-10">
+        <div className="lg:w-1/2 bg-yellow-300/20 flex items-center justify-center p-10">
           <div className="w-full max-w-md space-y-6">
-            <h2 className="text-3xl font-bold text-gray-800">
+            <h2 className="text-3xl font-bold text-[#FA812F]">
               {isLogin ? "Login to Your Account" : "Create a New Account"}
             </h2>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            {success && <p className="text-green-600 text-sm">{success}</p>}
+            {error && <p className="text-red-300 text-sm">{error}</p>}
+            {success && <p className="text-green-300 text-sm">{success}</p>}
 
             <form
               onSubmit={isLogin ? handleEmailLogin : handleSignUp}
@@ -107,7 +139,7 @@ export default function AuthPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#d100b7] focus:outline-none placeholder-gray-600"
+                className="w-full px-4 py-3 rounded-xl border border-yellow-600 bg-yellow-50 focus:ring-2 focus:ring-[#FA812F] focus:outline-none placeholder-gray-600"
               />
               <input
                 type="password"
@@ -115,13 +147,13 @@ export default function AuthPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#d100b7] focus:outline-none placeholder-gray-600"
+                className="w-full px-4 py-3 rounded-xl border border-yellow-600 bg-yellow-50 focus:ring-2 focus:ring-[#FA812F] focus:outline-none placeholder-gray-600"
               />
               <button
                 type="submit"
-                className={`w-full py-3 rounded-xl text-white font-semibold transition ${isLogin
-                    ? "bg-[#d100b7] hover:bg-[#b4009d]"
-                    : "bg-yellow-500 hover:bg-yellow-600 text-gray-800"
+                className={`w-full py-3 rounded-xl font-semibold transition ${isLogin
+                    ? "bg-[#FA812F] hover:bg-orange-600 text-white"
+                    : "bg-[#F3C623] hover:bg-yellow-500 text-gray-800"
                   }`}
               >
                 {isLogin ? "Login" : "Sign Up"}
@@ -129,20 +161,20 @@ export default function AuthPage() {
             </form>
 
             <div className="flex items-center justify-center gap-4">
-              <div className="flex-1 h-px bg-gray-300" />
-              <span className="text-gray-500 text-sm">OR</span>
-              <div className="flex-1 h-px bg-gray-300" />
+              <div className="flex-1 h-px bg-yellow-600" />
+              <span className="text-[#FA812F] text-sm">OR</span>
+              <div className="flex-1 h-px bg-yellow-600" />
             </div>
 
             <button
               onClick={handleGoogleLogin}
-              className="w-full py-3 flex items-center justify-center rounded-xl border border-gray-300 hover:bg-gray-100 transition text-gray-800"
+              className="w-full py-3 flex items-center justify-center rounded-xl border border-yellow-600 bg-white hover:bg-yellow-50 transition text-gray-800"
             >
               <FcGoogle className="text-xl mr-3" />
               Continue with Google
             </button>
 
-            <p className="text-center text-sm text-gray-600">
+            <p className="text-center text-sm text-[#FA812F]">
               {isLogin ? (
                 <>
                   Don't have an account?{" "}
@@ -151,7 +183,7 @@ export default function AuthPage() {
                       resetMessages();
                       setIsLogin(false);
                     }}
-                    className="text-[#d100b7] font-semibold hover:underline"
+                    className="text-[#F3C623] font-semibold hover:underline"
                   >
                     Sign Up
                   </button>
@@ -164,7 +196,7 @@ export default function AuthPage() {
                       resetMessages();
                       setIsLogin(true);
                     }}
-                    className="text-[#d100b7] font-semibold hover:underline"
+                    className="text-[#F3C623] font-semibold hover:underline"
                   >
                     Log In
                   </button>

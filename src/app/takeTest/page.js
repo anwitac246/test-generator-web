@@ -34,20 +34,34 @@ export default function TakeTest() {
   }, [router]);
 
   useEffect(() => {
-   
-    if (!authLoading && user) {
-    
+  if (!authLoading && user) {
+    try {
       const storedTest = localStorage.getItem('currentTest');
       if (storedTest) {
         const parsedTest = JSON.parse(storedTest);
+        console.log('Loaded test data:', parsedTest); // Debug log
+        
+        // Validate test has questions
+        if (!parsedTest.questions || parsedTest.questions.length === 0) {
+          console.error('Test has no questions');
+          alert('Error: Test has no questions. Please create a new test.');
+          router.push('/mockTests');
+          return;
+        }
+        
         setTestData(parsedTest);
-       
         setTimeLeft(parsedTest.timeLimit * 60);
       } else {
+        console.log('No test data found in localStorage');
         router.push('/mockTests');
       }
+    } catch (error) {
+      console.error('Error loading test data:', error);
+      alert('Error loading test data. Please create a new test.');
+      router.push('/mockTests');
     }
-  }, [router, authLoading, user]);
+  }
+}, [router, authLoading, user]);
 
   useEffect(() => {
     if (timeLeft > 0 && !testCompleted) {

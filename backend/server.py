@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import fitz
 import os
+import time
 import numpy as np
 import faiss
 import uuid
@@ -78,34 +79,56 @@ def upload_pdf():
 
 @app.route('/api/generate-questions', methods=['POST'])
 def generate_questions_api():
-    subject = request.json.get('subject', 'All')
-    count = min(int(request.json.get('count', 10)), 25)
-    topics = request.json.get('topics', [])
-    topic_filter = topics[0] if topics else None
+    try:
+        subject = request.json.get('subject', 'All')
+        count = min(int(request.json.get('count', 10)), 25)
+        topics = request.json.get('topics', [])
+        topic_filter = topics[0] if topics else None
 
-    if topic_filter:
-        relevant_questions = retrieve_relevant_questions(topic_filter, subject, count * 2)
-    else:
-        relevant_questions = filter_questions_by_subject(subject, count * 2)
+        print(f"Generating {count} questions for subject: {subject}")
+        print(f"Total questions in database: {len(questions_data)}")
 
-    generated_questions = []
-    
-    for question_data in relevant_questions[:count]:
+        if topic_filter:
+            relevant_questions = retrieve_relevant_questions(topic_filter, subject, count * 3)
+        else:
+            relevant_questions = filter_questions_by_subject(subject, count * 3)
+
+        print(f"Found {len(relevant_questions)} relevant questions")
+
+        generated_questions = []
+        attempts = 0
+        max_attempts = len(relevant_questions)
+        
+        for question_data in relevant_questions:
+            if len(generated_questions) >= count:
+                break
+        
+            attempts += 1
+            if attempts > max_attempts:
+                break
+        
+        print(f"Processing question {attempts}/{max_attempts}")
+        
+        # Add delay between API calls to avoid rate limiting
+        if attempts > 1:  # Don't delay on first request
+            time.sleep(2)  # Wait 2 seconds between requests
+        
         mcq = generate_enhanced_mcq(question_data)
         
-        if mcq:
+        if mcq and mcq.get("question") and len(mcq.get("options", [])) == 4:
             associated_image = find_associated_image(question_data['id'])
             
             question_obj = {
                 "question": mcq["question"],
-                "options": mcq["options"][:4],
+                "options": mcq["options"],
                 "answer": mcq["answer"],
-                "subject": question_data.get("subject"),
+                "subject": question_data.get("subject", "Unknown"),
                 "source_text": question_data.get("text", "")[:200] + "...",
                 "page": question_data.get("page"),
                 "pdf_source": question_data.get("source_pdf")
             }
             
+            # Add image if available
             if associated_image and os.path.exists(associated_image.get("image_path", "")):
                 try:
                     with open(associated_image["image_path"], "rb") as img_file:
@@ -113,18 +136,27 @@ def generate_questions_api():
                         question_obj["image_data"] = f"data:image/jpeg;base64,{img_data}"
                         question_obj["image_caption"] = associated_image.get("caption", "")
                 except Exception as e:
-                    question_obj["image_error"] = f"Could not load image: {str(e)}"
+                    print(f"Error loading image: {e}")
             
             generated_questions.append(question_obj)
+            print(f"Successfully generated question {len(generated_questions)}")
+        else:
+            print(f"Failed to generate valid MCQ for question: {question_data.get('text', '')[:50]}...")
 
-    return jsonify({
-        "questions": generated_questions,
-        "subject": subject,
-        "count": len(generated_questions),
-        "total_questions_in_db": len(questions_data),
-        "total_images_in_db": len(images_data)
-    }), 200
 
+        print(f"Final count: {len(generated_questions)} questions generated")
+
+        return jsonify({
+            "questions": generated_questions,
+            "subject": subject,
+            "count": len(generated_questions),
+            "total_questions_in_db": len(questions_data),
+            "total_images_in_db": len(images_data)
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in generate_questions_api: {e}")
+        return jsonify({"error": str(e)}), 500
 @app.route('/api/save-test', methods=['POST'])
 def save_test():
     data = request.json
@@ -428,11 +460,15 @@ def generate_enhanced_mcq(question_data):
     text = question_data.get("text", "")
     subject = question_data.get("subject", "")
     
+    # If text is too short, skip
+    if len(text.strip()) < 30:
+        return None
+    
     prompt = f"""
 You are an expert JEE {subject} tutor. Based on the following question/content from a JEE preparation material, generate one high-quality multiple-choice question with exactly 4 options.
 
 Content:
-{text}
+{text[:500]}
 
 Requirements:
 - Create a challenging question suitable for JEE Main level
@@ -442,7 +478,7 @@ Requirements:
 - If the content contains a specific question, adapt it into MCQ format
 - If the content is explanatory, create a question that tests the concept
 
-Format:
+Format your response EXACTLY like this:
 Q: [Your question here]
 A. [Option A]
 B. [Option B]  
@@ -451,57 +487,98 @@ D. [Option D]
 Answer: [A/B/C/D]
 """
     
-    try:
-        response = requests.post(
-            GROQ_API_URL,
-            headers={
-                'Authorization': f'Bearer {GROQ_API_KEY}',
-                'Content-Type': 'application/json'
-            },
-            json={
-                'model': GROQ_MODEL,
-                'messages': [{'role': 'user', 'content': prompt}],
-                'temperature': 0.7,
-                'max_tokens': 400
-            }
-        )
-        
-        if response.status_code == 200:
-            response_data = response.json()
-            if "choices" in response_data and response_data["choices"]:
-                mcq_text = response_data["choices"][0]["message"]["content"].strip()
-                return parse_mcq_string(mcq_text)
-    except Exception as e:
-        print(f"Error generating MCQ: {e}")
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(
+                GROQ_API_URL,
+                headers={
+                    'Authorization': f'Bearer {GROQ_API_KEY}',
+                    'Content-Type': 'application/json'
+                },
+                json={
+                    'model': GROQ_MODEL,
+                    'messages': [{'role': 'user', 'content': prompt}],
+                    'temperature': 0.7,
+                    'max_tokens': 500
+                },
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                response_data = response.json()
+                if "choices" in response_data and response_data["choices"]:
+                    mcq_text = response_data["choices"][0]["message"]["content"].strip()
+                    parsed_mcq = parse_mcq_string(mcq_text)
+                    
+                    # Validate the parsed MCQ
+                    if (parsed_mcq and 
+                        parsed_mcq.get("question") and 
+                        len(parsed_mcq.get("options", [])) == 4 and 
+                        parsed_mcq.get("answer") in ["A", "B", "C", "D"]):
+                        return parsed_mcq
+                    else:
+                        print(f"Invalid MCQ format for question: {text[:50]}...")
+                        return None
+            elif response.status_code == 429:
+                print(f"Rate limit hit, attempt {attempt + 1}/{max_retries}")
+                if attempt < max_retries - 1:
+                    time.sleep(5 * (attempt + 1))  # Exponential backoff: 5s, 10s, 15s
+                    continue
+                else:
+                    print(f"Max retries reached for rate limiting")
+                    return None
+            else:
+                print(f"GROQ API error: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            print(f"Error generating MCQ (attempt {attempt + 1}): {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            else:
+                return None
     
     return None
-
 def parse_mcq_string(mcq_str):
-    q_match = re.search(r'Q:\s*(.*?)\s*(?=A\.)', mcq_str, re.DOTALL)
-    question = q_match.group(1).strip() if q_match else ""
+    try:
+        # Extract question
+        q_match = re.search(r'Q:\s*(.*?)(?=\n\s*A\.|\nA\.)', mcq_str, re.DOTALL)
+        question = q_match.group(1).strip() if q_match else ""
 
-    options = []
-    for option_letter in ['A', 'B', 'C', 'D']:
-        if option_letter == 'D':
-            pattern = rf'{option_letter}\.\s*(.*?)(?=Answer:|\Z)'
-        else:
-            next_letter = chr(ord(option_letter) + 1)
-            pattern = rf'{option_letter}\.\s*(.*?)(?={next_letter}\.)'
+        # Extract options
+        options = []
+        option_patterns = [
+            r'A\.\s*(.*?)(?=\n\s*B\.|\nB\.)',
+            r'B\.\s*(.*?)(?=\n\s*C\.|\nC\.)',
+            r'C\.\s*(.*?)(?=\n\s*D\.|\nD\.)',
+            r'D\.\s*(.*?)(?=\n\s*Answer:|\nAnswer:)'
+        ]
         
-        match = re.search(pattern, mcq_str, re.DOTALL)
-        if match:
-            option_text = match.group(1).strip().split('\n')[0].strip()
-            options.append(option_text)
+        for pattern in option_patterns:
+            match = re.search(pattern, mcq_str, re.DOTALL)
+            if match:
+                option_text = match.group(1).strip().split('\n')[0].strip()
+                options.append(option_text)
+            else:
+                options.append("")
 
-    ans_match = re.search(r'Answer:\s*([ABCD])', mcq_str)
-    answer = ans_match.group(1).strip() if ans_match else ""
+        # Extract answer
+        ans_match = re.search(r'Answer:\s*([ABCD])', mcq_str)
+        answer = ans_match.group(1).strip() if ans_match else ""
 
-    return {
-        "question": question,
-        "options": options,
-        "answer": answer
-    }
+        if not question or len(options) != 4 or not answer or any(not opt for opt in options):
+            return None
 
+        return {
+            "question": question,
+            "options": options,
+            "answer": answer
+        }
+    except Exception as e:
+        print(f"Error parsing MCQ string: {e}")
+        return None
 @app.route('/api/user-test-results/<user_id>', methods=['GET'])
 def get_user_test_results(user_id):
     try:

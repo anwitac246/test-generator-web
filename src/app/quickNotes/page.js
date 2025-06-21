@@ -95,25 +95,24 @@ const Notes = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50">
       <Navbar/>
       
-      <div className="flex h-screen bg-gradient-to-br from-pink-50 to-purple-50">
-        {/* Main Content */}
+      <div className="flex h-screen bg-gradient-to-br from-orange-50 to-yellow-50">
+       
         <main className="flex-1 p-8 overflow-y-auto">
           <header className="mb-8">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-[#FA812F] to-[#F3C623] bg-clip-text text-transparent">
               Quick Notes
             </h1>
             <p className="text-gray-600 mt-2 text-lg">Fast reference for key concepts and formulas</p>
           </header>
 
-          {/* Filters */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
             <input
               type="text"
               placeholder="Search notes..."
-              className="bg-white text-gray-800 border-2 border-pink-200 rounded-2xl px-6 py-3 w-full md:w-1/3 focus:ring-4 focus:ring-pink-300 focus:border-pink-400 transition-all duration-300 shadow-sm"
+              className="bg-white text-gray-800 border-2 border-orange-200 rounded-2xl px-6 py-3 w-full md:w-1/3 focus:ring-4 focus:ring-orange-300 focus:border-[#FA812F] transition-all duration-300 shadow-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -121,23 +120,22 @@ const Notes = () => {
               <select
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="bg-white text-gray-800 border-2 border-pink-200 rounded-2xl px-6 py-3 focus:ring-4 focus:ring-pink-300 focus:border-pink-400 transition-all duration-300 shadow-sm"
+                className="bg-white text-gray-800 border-2 border-orange-200 rounded-2xl px-6 py-3 focus:ring-4 focus:ring-orange-300 focus:border-[#FA812F] transition-all duration-300 shadow-sm"
               >
                 {subjects.map(subject => <option key={subject}>{subject}</option>)}
               </select>
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="bg-white text-gray-800 border-2 border-pink-200 rounded-2xl px-6 py-3 focus:ring-4 focus:ring-pink-300 focus:border-pink-400 transition-all duration-300 shadow-sm"
+                className="bg-white text-gray-800 border-2 border-orange-200 rounded-2xl px-6 py-3 focus:ring-4 focus:ring-orange-300 focus:border-[#FA812F] transition-all duration-300 shadow-sm"
               >
                 {noteTypes.map(type => <option key={type}>{type}</option>)}
               </select>
             </div>
           </div>
 
-          {/* Tabs */}
           <div className="mb-8">
-            <nav className="flex space-x-6 border-b-2 border-pink-200 pb-2">
+            <nav className="flex space-x-6 border-b-2 border-orange-200 pb-2">
               {[
                 { id: 'all', label: 'All Notes' },
                 { id: 'formulas', label: 'Formula Sheets' },
@@ -149,8 +147,8 @@ const Notes = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`py-3 px-6 rounded-2xl transition-all duration-300 font-medium ${
                     activeTab === tab.id
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
-                      : 'text-gray-600 hover:text-pink-600 hover:bg-pink-50'
+                      ? 'bg-gradient-to-r from-[#FA812F] to-[#F3C623] text-white shadow-lg'
+                      : 'text-gray-600 hover:text-[#FA812F] hover:bg-orange-50'
                   }`}
                 >
                   {tab.label}
@@ -159,12 +157,11 @@ const Notes = () => {
             </nav>
           </div>
 
-          {/* Notes Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {getTabNotes().map(note => (
               <div
                 key={note.id}
-                className="bg-white rounded-3xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-pink-100"
+                className="bg-white rounded-3xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-orange-100"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
@@ -175,8 +172,8 @@ const Notes = () => {
                     onClick={() => toggleFavorite(note.id)}
                     className={`ml-3 text-2xl transition-all duration-300 hover:scale-110 ${
                       favorites.includes(note.id) 
-                        ? 'text-yellow-500 drop-shadow-lg' 
-                        : 'text-gray-300 hover:text-yellow-400'
+                        ? 'text-[#F3C623] drop-shadow-lg' 
+                        : 'text-gray-300 hover:text-[#F3C623]'
                     }`}
                     aria-label="Toggle Favorite"
                   >
@@ -186,16 +183,16 @@ const Notes = () => {
                 
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center">
-                    <span className="font-semibold text-pink-600 min-w-[70px]">Subject:</span>
+                    <span className="font-semibold text-[#FA812F] min-w-[70px]">Subject:</span>
                     <span className="text-gray-700">{note.subject}</span>
                   </div>
                   <div className="flex items-center">
-                    <span className="font-semibold text-pink-600 min-w-[70px]">Topic:</span>
+                    <span className="font-semibold text-[#FA812F] min-w-[70px]">Topic:</span>
                     <span className="text-gray-700">{note.topic}</span>
                   </div>
                   <div className="flex items-center">
-                    <span className="font-semibold text-pink-600 min-w-[70px]">Type:</span>
-                    <span className="inline-block bg-gradient-to-r from-pink-100 to-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+                    <span className="font-semibold text-[#FA812F] min-w-[70px]">Type:</span>
+                    <span className="inline-block bg-gradient-to-r from-orange-100 to-yellow-100 text-orange-700 px-3 py-1 rounded-full text-sm font-medium">
                       {note.type}
                     </span>
                   </div>
@@ -208,7 +205,7 @@ const Notes = () => {
                 {note.link && (
                   <button
                     onClick={() => setPreviewLink(note.link)}
-                    className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-6 py-3 rounded-2xl transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+                    className="w-full bg-gradient-to-r from-[#FA812F] to-[#F3C623] hover:from-orange-600 hover:to-yellow-600 text-white px-6 py-3 rounded-2xl transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
                   >
                     Preview Document
                   </button>
@@ -226,15 +223,14 @@ const Notes = () => {
           )}
         </main>
 
-        {/* Preview Modal */}
         {previewLink && (
           <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-6xl h-5/6 relative">
-              <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-4 flex items-center justify-between">
+              <div className="bg-gradient-to-r from-[#FA812F] to-[#F3C623] p-4 flex items-center justify-between">
                 <h3 className="text-white font-bold text-lg">Document Preview</h3>
                 <button
                   onClick={() => setPreviewLink(null)}
-                  className="text-white hover:text-yellow-300 text-3xl font-bold transition-colors duration-300 hover:scale-110 transform"
+                  className="text-white hover:text-yellow-200 text-3xl font-bold transition-colors duration-300 hover:scale-110 transform"
                 >
                   ×
                 </button>
