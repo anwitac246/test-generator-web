@@ -69,6 +69,7 @@ const subjects = {
   ],
 };
 
+
 export default function CreateMockTest() {
   const [testType, setTestType] = useState("full");
   const [selectedSubjects, setSelectedSubjects] = useState([]);
@@ -80,6 +81,9 @@ export default function CreateMockTest() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [testHistory, setTestHistory] = useState([]);
   const [testId, setTestId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [showTopics, setShowTopics] = useState({});
   const router = useRouter();
 
   const handleSubjectToggle = (subject) => {
@@ -122,6 +126,10 @@ export default function CreateMockTest() {
 
     return () => unsubscribe();
   }, [router]);
+
+  const toggleTopicsView = (subject) => {
+    setShowTopics(prev => ({ ...prev, [subject]: !prev[subject] }));
+  };
 
   const handleTopicToggle = (subject, topic) => {
     const subjectTopics = selectedTopics[subject] || [];
@@ -268,6 +276,14 @@ export default function CreateMockTest() {
     router.push("/takeTest");
   };
 
+  const filteredTests = testHistory.filter(test => {
+    const matchesSearch = test.subjects.some(subject => 
+      subject.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    const matchesFilter = filterType === "all" || test.testType === filterType;
+    return matchesSearch && matchesFilter;
+  });
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -280,81 +296,45 @@ export default function CreateMockTest() {
     return (
       <div>
         <Navbar />
-        <div className="min-h-screen bg-white p-6 text-black">
-          <div className="max-w-4xl mx-auto">
-            {/* Success Animation */}
-            <div className="text-center mb-8 animate-bounce">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-yellow-300 rounded-full mb-4 border border-magenta-500">
-                <svg className="w-10 h-10 text-magenta-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="min-h-screen bg-white p-6">
+          <div className="max-w-2xl mx-auto text-center">
+            <div className="mb-8">
+              <div className="w-20 h-20 bg-[#FA812F] rounded-full mx-auto mb-4 flex items-center justify-center animate-bounce">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold text-magenta-500 mb-2">Test Created Successfully!</h1>
-              <p className="text-black text-lg">Your mock test is ready to begin</p>
+              <h1 className="text-4xl font-bold text-[#FA812F] mb-2">Test Created!</h1>
+              <p className="text-black">Your mock test is ready</p>
             </div>
 
-            {/* Test Details Card */}
-            <div className="bg-white rounded-2xl border border-magenta-300 p-8 mb-8 shadow-lg hover:shadow-xl transition-shadow duration-300">
-              <h2 className="text-2xl font-semibold mb-6 text-black flex items-center gap-3">
-                <div className="w-8 h-8 bg-magenta-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-magenta-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
+            <div className="bg-white border border-[#FA812F]/20 rounded-xl p-6 mb-8 shadow-lg">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-black/60">Type:</span>
+                  <p className="font-semibold text-black">{testType === "full" ? "Full Test" : "Custom Test"}</p>
                 </div>
-                Test Configuration
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-magenta-500 rounded-full"></div>
-                    <span className="text-black">Type:</span>
-                    <span className="text-black font-medium">{testType === "full" ? "Full Test" : "Custom Test"}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
-                    <span className="text-black">Questions:</span>
-                    <span className="text-black font-medium">{testData.totalQuestions}</span>
-                  </div>
+                <div>
+                  <span className="text-black/60">Questions:</span>
+                  <p className="font-semibold text-black">{testData.totalQuestions}</p>
                 </div>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-white rounded-full border border-magenta-500"></div>
-                    <span className="text-black">Duration:</span>
-                    <span className="text-black font-medium">{testData.timeLimit} minutes</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-magenta-500 rounded-full"></div>
-                    <span className="text-black">Subjects:</span>
-                    <span className="text-black font-medium">{testData.subjects.join(", ")}</span>
-                  </div>
+                <div>
+                  <span className="text-black/60">Duration:</span>
+                  <p className="font-semibold text-black">{testData.timeLimit} min</p>
+                </div>
+                <div>
+                  <span className="text-black/60">Subjects:</span>
+                  <p className="font-semibold text-black">{testData.subjects.join(", ")}</p>
                 </div>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="text-center space-y-4">
+            <div className="space-y-4">
               <button
                 onClick={handleTakeTest}
-                className="group relative px-8 py-4 bg-magenta-500 rounded-xl font-semibold text-lg text-gray-900 shadow-lg hover:shadow-magenta-600 transform hover:scale-105 transition-all duration-300"
-                aria-label="Start the created mock test"
+                className="w-full px-6 py-3 bg-[#FA812F] hover:bg-[#e8741e] text-white font-semibold rounded-lg transition-colors"
               >
-                <span className="relative z-10 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.5a2.5 2.5 0 000-5H9v5zm0 0H7.5a2.5 2.5 0 000 5H9v-5z"
-                    />
-                  </svg>
-                  Begin Test
-                </span>
-                <div className="absolute inset-0 bg-magenta-600 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                Start Test
               </button>
               <button
                 onClick={() => {
@@ -362,8 +342,7 @@ export default function CreateMockTest() {
                   setTestData(null);
                   setTestId(null);
                 }}
-                className="px-6 py-2 bg-yellow-300 hover:bg-yellow-400 rounded-lg text-black font-medium transition-all duration-300 border border-magenta-300 hover:border-magenta-500"
-                aria-label="Create another mock test"
+                className="px-6 py-2 text-[#FA812F] hover:bg-[#FA812F]/10 rounded-lg transition-colors"
               >
                 Create Another Test
               </button>
@@ -377,339 +356,225 @@ export default function CreateMockTest() {
   return (
     <div>
       <Navbar />
-      <div className="min-h-screen bg-white p-6 text-black">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-6xl font-bold text-magenta-500 mb-4">Create Your Mock Test</h1>
-            <p className="text-black text-lg max-w-2xl mx-auto">
-              Build a personalized practice test tailored to your needs with our comprehensive question bank.
-            </p>
+      <div className="min-h-screen bg-white p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-[#FA812F] mb-2">Create Mock Test</h1>
+            <p className="text-black/70">Build your personalized practice test</p>
           </div>
 
           {/* Test Type Selection */}
-          <div className="flex justify-center gap-4 mb-12">
+          <div className="flex justify-center gap-2 mb-8">
             {["full", "custom"].map((type) => (
               <button
                 key={type}
                 onClick={() => setTestType(type)}
                 className={clsx(
-                  "group relative px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-300",
+                  "px-6 py-2 rounded-lg font-medium transition-colors",
                   testType === type
-                    ? "bg-magenta-500 text-gray-900 shadow-lg scale-105"
-                    : "bg-yellow-300 text-black hover:bg-yellow-400 border border-magenta-300",
+                    ? "bg-[#FA812F] text-white"
+                    : "bg-white border border-[#FA812F]/20 text-black hover:bg-[#FA812F]/10"
                 )}
-                aria-label={`Select ${type === "full" ? "Full" : "Custom"} Test`}
               >
-                <span className="relative z-10 flex items-center gap-2">
-                  {type === "full" ? (
-                    <svg className="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"
-                      />
-                    </svg>
-                  )}
-                  {type === "full" ? "Full Test" : "Custom Test"}
-                </span>
-                <div
-                  className={clsx(
-                    "absolute inset-0 bg-magenta-600 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300",
-                    testType === type && "opacity-100",
-                  )}
-                ></div>
+                {type === "full" ? "Full Test" : "Custom Test"}
               </button>
             ))}
           </div>
 
-          <div className="bg-white rounded-3xl border border-magenta-300 p-8 shadow-lg">
-            <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="bg-white border border-[#FA812F]/20 rounded-xl p-6 shadow-lg mb-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {testType === "full" ? (
                 <div className="text-center py-8">
-                  <div className="bg-yellow-100 rounded-2xl p-8 border border-magenta-300">
-                    <div className="flex justify-center mb-6">
-                      <div className="w-16 h-16 bg-magenta-500 rounded-full flex items-center justify-center">
-                        <svg className="w-8 h-8 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                  <div className="bg-[#FA812F]/5 rounded-xl p-6">
+                    <h3 className="text-xl font-semibold mb-4 text-black">Complete JEE Mock Test</h3>
+                    <div className="grid grid-cols-3 gap-4 text-center text-sm">
+                      <div className="bg-white rounded-lg p-4 border border-[#FA812F]/10">
+                        <div className="text-2xl font-bold text-[#FA812F]">25</div>
+                        <div className="text-black/60">Physics</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-4 border border-[#FA812F]/10">
+                        <div className="text-2xl font-bold text-[#FA812F]">25</div>
+                        <div className="text-black/60">Chemistry</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-4 border border-[#FA812F]/10">
+                        <div className="text-2xl font-bold text-[#FA812F]">25</div>
+                        <div className="text-black/60">Mathematics</div>
                       </div>
                     </div>
-                    <h3 className="text-2xl font-semibold mb-4 text-black">Complete JEE Mock Test</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-                      <div className="bg-white rounded-xl p-4">
-                        <div className="text-3xl font-bold text-magenta-500 mb-2">25</div>
-                        <div className="text-black">Physics Questions</div>
-                      </div>
-                      <div className="bg-white rounded-xl p-4">
-                        <div className="text-3xl font-bold text-yellow-400 mb-2">25</div>
-                        <div className="text-black">Chemistry Questions</div>
-                      </div>
-                      <div className="bg-white rounded-xl p-4">
-                        <div className="text-3xl font-bold text-black mb-2">25</div>
-                        <div className="text-black">Mathematics Questions</div>
-                      </div>
-                    </div>
-                    <div className="mt-6 text-black">
-                      <span className="text-lg">Total Duration: </span>
-                      <span className="text-xl font-semibold text-magenta-500">3 Hours</span>
+                    <div className="mt-4 text-black">
+                      <span className="text-[#FA812F] font-semibold">Duration: 180 minutes</span>
                     </div>
                   </div>
                 </div>
               ) : (
                 <>
-                  {/* Subject Selection */}
-                  <div className="space-y-6">
-                    <h2 className="text-2xl font-semibold text-black flex items-center gap-3">
-                      <div className="w-8 h-8 bg-magenta-100 rounded-lg flex items-center justify-center">
-                        <svg className="w-5 h-5 text-magenta-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                          />
-                        </svg>
-                      </div>
-                      Select Subjects
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-black">Select Subjects</h3>
+                    <div className="grid grid-cols-3 gap-3">
                       {Object.keys(subjects).map((subject) => (
                         <label
                           key={subject}
                           className={clsx(
-                            "group cursor-pointer transition-all duration-300",
-                            selectedSubjects.includes(subject) ? "scale-105" : "hover:scale-102",
+                            "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors",
+                            selectedSubjects.includes(subject)
+                              ? "bg-[#FA812F]/10 border-[#FA812F] text-black"
+                              : "bg-white border-[#FA812F]/20 hover:bg-[#FA812F]/5 text-black"
                           )}
                         >
-                          <div
-                            className={clsx(
-                              "relative p-6 rounded-xl border-2 transition-all duration-300",
-                              selectedSubjects.includes(subject)
-                                ? "bg-magenta-100 border-magenta-500 shadow-lg shadow-magenta-500/25"
-                                : "bg-white border-magenta-300 hover:border-magenta-500 hover:bg-yellow-100",
-                            )}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedSubjects.includes(subject)}
-                              onChange={() => handleSubjectToggle(subject)}
-                              className="absolute top-4 right-4 w-5 h-5 accent-magenta-500"
-                            />
-                            <div className="text-center">
-                              <div
-                                className={clsx(
-                                  "w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center",
-                                  selectedSubjects.includes(subject)
-                                    ? "bg-magenta-500"
-                                    : "bg-yellow-300 group-hover:bg-yellow-400",
-                                )}
-                              >
-                                <span className={clsx("text-2xl", selectedSubjects.includes(subject) ? "text-gray-900" : "text-black")}>
-                                  {subject === "Physics" ? "⚛" : subject === "Chemistry" ? "🧪" : "📊"}
-                                </span>
-                              </div>
-                              <h3 className="text-lg font-semibold text-black">{subject}</h3>
-                            </div>
-                          </div>
+                          <input
+                            type="checkbox"
+                            checked={selectedSubjects.includes(subject)}
+                            onChange={() => handleSubjectToggle(subject)}
+                            className="w-4 h-4 accent-[#FA812F]"
+                          />
+                          <span className="font-medium">{subject}</span>
                         </label>
                       ))}
                     </div>
                   </div>
 
-                  {/* Topic Selection */}
                   {selectedSubjects.map((subject) => (
-                    <div key={subject} className="space-y-4">
-                      <h3 className="text-xl font-semibold text-black flex items-center gap-3">
-                        <div className="w-6 h-6 bg-yellow-100 rounded-lg flex items-center justify-center">
-                          <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                    <div key={subject}>
+                      <button
+                        type="button"
+                        onClick={() => toggleTopicsView(subject)}
+                        className="flex items-center justify-between w-full p-3 bg-[#FA812F]/5 rounded-lg text-left hover:bg-[#FA812F]/10 transition-colors"
+                      >
+                        <span className="font-medium text-black">Topics for {subject}</span>
+                        <svg
+                          className={clsx(
+                            "w-5 h-5 text-[#FA812F] transition-transform",
+                            showTopics[subject] ? "rotate-180" : ""
+                          )}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      
+                      {showTopics[subject] && subjects[subject].length > 0 && (
+                        <div className="mt-2 grid grid-cols-2 gap-2 p-3 bg-white border border-[#FA812F]/10 rounded-lg">
+                          {subjects[subject].map((topic) => (
+                            <label
+                              key={topic}
+                              className="flex items-center gap-2 text-sm hover:bg-[#FA812F]/5 p-2 rounded cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedTopics[subject]?.includes(topic) || false}
+                                onChange={() => handleTopicToggle(subject, topic)}
+                                className="w-4 h-4 accent-[#FA812F]"
+                              />
+                              <span className="text-black">{topic}</span>
+                            </label>
+                          ))}
                         </div>
-                        Topics for {subject}
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {subjects[subject].map((topic) => (
-                          <label
-                            key={topic}
-                            className={clsx(
-                              "group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200",
-                              selectedTopics[subject]?.includes(topic)
-                                ? "bg-magenta-100 border border-magenta-500 text-black"
-                                : "bg-white border border-magenta-300 text-black hover:bg-yellow-100 hover:border-magenta-500",
-                            )}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedTopics[subject]?.includes(topic) || false}
-                              onChange={() => handleTopicToggle(subject, topic)}
-                              className="w-4 h-4 accent-magenta-500"
-                            />
-                            <span className="text-sm font-medium">{topic}</span>
-                          </label>
-                        ))}
-                      </div>
+                      )}
                     </div>
                   ))}
 
-                  {/* Time Selection */}
-                  <div className="space-y-4">
-                    <h2 className="text-2xl font-semibold text-black flex items-center gap-3">
-                      <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                        <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      Test Duration
-                    </h2>
-                    <div className="max-w-md">
-                      <div className="relative">
-                        <input
-                          type="number"
-                          value={customTime}
-                          onChange={(e) => setCustomTime(e.target.value)}
-                          className="w-full px-4 py-3 bg-white border border-magenta-300 rounded-xl text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-magenta-500 focus:border-magenta-500 transition-all duration-300"
-                          min="10"
-                          max="180"
-                          placeholder="Enter duration in minutes"
-                          aria-label="Test duration in minutes"
-                        />
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-black text-sm">minutes</div>
-                      </div>
-                      <div className="mt-2 text-black text-sm">Duration range: 10-180 minutes</div>
+                  <div>
+                    <label className="block text-lg font-semibold mb-2 text-black">Test Duration</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={customTime}
+                        onChange={(e) => setCustomTime(e.target.value)}
+                        className="w-24 px-3 py-2 border border-[#FA812F]/20 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-[#FA812F]/50"
+                        min="10"
+                        max="180"
+                      />
+                      <span className="text-black">minutes (10-180)</span>
                     </div>
                   </div>
                 </>
               )}
 
-              {/* Submit Button */}
-              <div className="text-center pt-6">
-                <button
-                  type="submit"
-                  disabled={isLoading || (testType === "custom" && selectedSubjects.length === 0)}
-                  className={clsx(
-                    "group relative px-10 py-4 rounded-xl font-semibold text-lg transition-all duration-300",
-                    isLoading || (testType === "custom" && selectedSubjects.length === 0)
-                      ? "bg-yellow-200 text-magenta-300 cursor-not-allowed"
-                      : "bg-magenta-500 text-gray-900 shadow-lg hover:shadow-magenta-600 transform hover:scale-105",
-                  )}
-                  aria-label="Create the mock test"
-                >
-                  <span className="relative z-10 flex items-center gap-2">
-                    {isLoading ? (
-                      <>
-                        <svg className="animate-spin w-5 h-5 text-gray-900" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        Creating Test...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        Create Test
-                      </>
-                    )}
-                  </span>
-                  <div
-                    className={clsx(
-                      "absolute inset-0 bg-magenta-600 rounded-xl opacity-0 transition-opacity duration-300",
-                      !(isLoading || (testType === "custom" && selectedSubjects.length === 0)) && "group-hover:opacity-100",
-                    )}
-                  ></div>
-                </button>
-                {testType === "custom" && selectedSubjects.length === 0 && (
-                  <p className="mt-3 text-black text-sm">Please select at least one subject to continue</p>
+              <button
+                type="submit"
+                disabled={isLoading || (testType === "custom" && selectedSubjects.length === 0)}
+                className={clsx(
+                  "w-full px-6 py-3 rounded-lg font-semibold transition-colors",
+                  isLoading || (testType === "custom" && selectedSubjects.length === 0)
+                    ? "bg-black/10 text-black/40 cursor-not-allowed"
+                    : "bg-[#FA812F] hover:bg-[#e8741e] text-white"
                 )}
-              </div>
+              >
+                {isLoading ? "Creating Test..." : "Create Test"}
+              </button>
+              
+              {testType === "custom" && selectedSubjects.length === 0 && (
+                <p className="text-center text-black/60 text-sm">Select at least one subject</p>
+              )}
             </form>
           </div>
 
-          {/* Previous Tests Section */}
-          <div className="mt-16">
-            <h2 className="text-3xl font-bold text-center mb-8 text-magenta-500">Previous Tests</h2>
-            {(!testHistory || testHistory.length === 0) && (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-magenta-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                </div>
-                <p className="text-black text-lg">No tests created yet.</p>
+          {/* Previous Tests */}
+          <div>
+            <h2 className="text-2xl font-bold mb-4 text-[#FA812F]">Previous Tests</h2>
+            
+            {testHistory.length > 0 && (
+              <div className="flex gap-4 mb-4">
+                <input
+                  type="text"
+                  placeholder="Search by subject..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-[#FA812F]/20 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-[#FA812F]/50"
+                />
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="px-3 py-2 border border-[#FA812F]/20 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-[#FA812F]/50"
+                >
+                  <option value="all">All Tests</option>
+                  <option value="full">Full Tests</option>
+                  <option value="custom">Custom Tests</option>
+                </select>
               </div>
             )}
-            {testHistory.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {testHistory.map((test) => (
+
+            {filteredTests.length === 0 ? (
+              <div className="text-center py-12 text-black/60">
+                {testHistory.length === 0 ? "No tests created yet" : "No tests match your search"}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredTests.map((test) => (
                   <div
                     key={test.testId}
-                    className="bg-white rounded-2xl border border-magenta-300 p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                    className="bg-white border border-[#FA812F]/20 rounded-lg p-4 hover:shadow-lg transition-shadow"
                   >
-                    <div className="flex items-center gap-3 mb-4">
-                      <div
-                        className={clsx(
-                          "w-10 h-10 rounded-full flex items-center justify-center",
-                          test.testType === "full" ? "bg-magenta-100 text-magenta-500" : "bg-yellow-100 text-yellow-400",
-                        )}
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-semibold text-black">{test.testType === "full" ? "Full Test" : "Custom Test"}</h3>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={clsx(
+                        "px-2 py-1 rounded text-xs font-medium",
+                        test.testType === "full" 
+                          ? "bg-[#FA812F]/10 text-[#FA812F]" 
+                          : "bg-black/10 text-black"
+                      )}>
+                        {test.testType === "full" ? "Full" : "Custom"}
+                      </span>
+                      <span className="text-xs text-black/60">
+                        {new Date(test.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
-                    <div className="space-y-2 text-sm text-black mb-4">
-                      <p>
-                        <span className="text-black font-medium">Subjects:</span> {test.subjects.join(", ")}
-                      </p>
-                      <p>
-                        <span className="text-black font-medium">Questions:</span> {test.totalQuestions}
-                      </p>
-                      <p>
-                        <span className="text-black font-medium">Duration:</span> {test.timeLimit} minutes
-                      </p>
-                      <p>
-                        <span className="text-black font-medium">Created:</span> {new Date(test.createdAt).toLocaleDateString()}
-                      </p>
-                      {test.score !== undefined && test.total !== undefined && (
-                        <p>
-                          <span className="text-black font-medium">Score:</span> {test.score}/{test.total}{" "}
-                          ({test.percentage ?? ((test.score / test.total) * 100).toFixed(2)}%)
-                        </p>
+                    
+                    <div className="space-y-1 text-sm text-black mb-3">
+                      <p><span className="text-black/60">Subjects:</span> {test.subjects.join(", ")}</p>
+                      <p><span className="text-black/60">Questions:</span> {test.totalQuestions}</p>
+                      <p><span className="text-black/60">Duration:</span> {test.timeLimit} min</p>
+                      {test.score !== undefined && (
+                        <p><span className="text-black/60">Score:</span> {test.score}/{test.total}</p>
                       )}
                     </div>
+                    
                     <button
                       onClick={() => handleRetakeTest(test)}
-                      className="w-full px-4 py-2 bg-magenta-500 hover:bg-magenta-600 rounded-lg font-semibold text-gray-900 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-magenta-600"
-                      aria-label={`Retake ${test.testType === "full" ? "Full" : "Custom"} Test created on ${new Date(
-                        test.createdAt,
-                      ).toLocaleDateString()}`}
+                      className="w-full px-4 py-2 bg-[#FA812F] hover:bg-[#e8741e] text-white rounded-lg transition-colors"
                     >
-                      Retake Test
+                      Retake
                     </button>
                   </div>
                 ))}
