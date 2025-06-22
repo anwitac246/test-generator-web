@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "../lib/firebase-config";
 import { onAuthStateChanged } from "firebase/auth";
@@ -25,9 +25,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!authLoading && user) fetchTestResults();
-  }, [authLoading, user]);
+  }, [fetchTestResults, authLoading, user]);
 
-  const fetchTestResults = async () => {
+  const fetchTestResults = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`http://localhost:5000/api/user-test-results/${user.uid}`, {
@@ -43,7 +43,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   const getFilteredResults = () => {
     if (selectedTimeRange === "all") return testResults;

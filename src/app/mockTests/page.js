@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/navbar";
 import { auth } from "../lib/firebase-config";
@@ -172,7 +172,7 @@ export default function CreateMockTest() {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -256,7 +256,7 @@ export default function CreateMockTest() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [testType, customTime, selectedSubjects, selectedTopics, testHistory]);
 
   const handleTakeTest = () => {
     localStorage.setItem("currentTest", JSON.stringify({ ...testData, testId }));
