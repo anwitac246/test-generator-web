@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { auth } from "../lib/firebase-config"; 
 import { onAuthStateChanged } from "firebase/auth";
@@ -31,64 +32,8 @@ export default function TakeTest() {
 
     return () => unsubscribe();
   }, [router]);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      try {
-        const storedTest = localStorage.getItem('currentTest');
-        if (storedTest) {
-          const parsedTest = JSON.parse(storedTest);
-          
-          if (!parsedTest.questions || parsedTest.questions.length === 0) {
-            alert('Error: Test has no questions. Please create a new test.');
-            router.push('/mockTests');
-            return;
-          }
-          
-          setTestData(parsedTest);
-          setTimeLeft(parsedTest.timeLimit * 60);
-        } else {
-          router.push('/mockTests');
-        }
-      } catch (error) {
-        console.error('Error loading test data:', error);
-        alert('Error loading test data. Please create a new test.');
-        router.push('/mockTests');
-      }
-    }
-  }, [router, authLoading, user]);
-
-  useEffect(() => {
-    if (timeLeft > 0 && !testCompleted && testData) {
-      if (timeLeft === 300) {
-        setShowWarning(true);
-        setTimeout(() => setShowWarning(false), 5000);
-      }
-      
-      const timer = setTimeout(() => {
-        setTimeLeft(timeLeft - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !testCompleted && testData) {
-      handleSubmitTest();
-    }
-  }, [timeLeft, testCompleted, testData]);
-
-  const formatTime = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handleAnswerSelect = (questionIndex, answer) => {
-    setUserAnswers(prev => ({
-      ...prev,
-      [questionIndex]: answer,
-    }));
-  };
-
-  const handleSubmitTest = async () => {
+  
+  const handleSubmitTest = useCallback(async () => {
     if (!testData || !testData.questions || !user) {
       console.error("Test data or user not available");
       return;
@@ -153,6 +98,62 @@ export default function TakeTest() {
       setIsLoading(false);
       setTestCompleted(true);
     }
+  }, [testData, userAnswers, timeLeft, user]);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      try {
+        const storedTest = localStorage.getItem('currentTest');
+        if (storedTest) {
+          const parsedTest = JSON.parse(storedTest);
+          
+          if (!parsedTest.questions || parsedTest.questions.length === 0) {
+            alert('Error: Test has no questions. Please create a new test.');
+            router.push('/mockTests');
+            return;
+          }
+          
+          setTestData(parsedTest);
+          setTimeLeft(parsedTest.timeLimit * 60);
+        } else {
+          router.push('/mockTests');
+        }
+      } catch (error) {
+        console.error('Error loading test data:', error);
+        alert('Error loading test data. Please create a new test.');
+        router.push('/mockTests');
+      }
+    }
+  }, [router, authLoading, user]);
+
+  useEffect(() => {
+    if (timeLeft > 0 && !testCompleted && testData) {
+      if (timeLeft === 300) {
+        setShowWarning(true);
+        setTimeout(() => setShowWarning(false), 5000);
+      }
+      
+      const timer = setTimeout(() => {
+        setTimeLeft(timeLeft - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (timeLeft === 0 && !testCompleted && testData) {
+      handleSubmitTest();
+    }
+  }, [timeLeft, testCompleted, testData, handleSubmitTest]);
+
+  const formatTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleAnswerSelect = (questionIndex, answer) => {
+    setUserAnswers(prev => ({
+      ...prev,
+      [questionIndex]: answer,
+    }));
   };
 
   const getSubjectStats = () => {
@@ -358,7 +359,7 @@ export default function TakeTest() {
 
                 {currentQuestion.image_data && (
                   <div className="mb-6 bg-white rounded-lg p-4">
-                    <img
+                    <Image
                       src={currentQuestion.image_data}
                       alt="Question diagram"
                       className="max-w-full h-auto rounded-lg mx-auto"

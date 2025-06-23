@@ -76,11 +76,9 @@ export default function Homepage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button className="bg-[#FA812F] text-[#FEF3E2] px-8 py-4 rounded-full text-lg font-semibold hover:bg-[#FFB22C] transition-all transform hover:scale-105">
-              Start Your Journey
+              <a href="/mockTests">Start Your Journey</a>
             </button>
-            <button className="border-2 border-[#F3C623] text-[#FA812F] px-8 py-4 rounded-full text-lg font-semibold hover:bg-[#F3C623] hover:text-[#FEF3E2] transition-all">
-              Learn More
-            </button>
+            
           </div>
         </div>
         </section>
@@ -142,7 +140,7 @@ export default function Homepage() {
                   Our platform combines the flexibility of custom test creation with comprehensive practice materials.
                 </p>
                 <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-                  Whether you're starting your JEE journey or in the final stretch, our adaptive learning system 
+                  Whether you&apos;re starting your JEE journey or in the final stretch, our adaptive learning system 
                   helps you focus on what matters most for your success.
                 </p>
                 <div className="grid grid-cols-2 gap-6">
@@ -164,7 +162,7 @@ export default function Homepage() {
                       Join thousands of students who have improved their JEE scores with our personalized approach to test preparation.
                     </p>
                     <button className="bg-[#FA812F] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#FFB22C] transition-colors w-full">
-                      Get Started Today
+                      <a href="/mockTests">Get Started Today</a>
                     </button>
                   </div>
                 </div>

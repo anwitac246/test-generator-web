@@ -42,9 +42,9 @@ const Navbar = () => {
           {[
             { href: '/dashboard', label: 'Dashboard' },
             { href: '/mockTests', label: 'Mock Tests' },
-            { href: '/question-bank', label: 'Question Bank' },
-            { href: '/quickNotes', label: 'Quick Notes' },
-            { href: '/leaderboard', label: 'Leaderboard' },
+           
+            { href: '/quickNotes', label: 'Quick Notes' }
+           
           ].map(({ href, label }) => (
             <Link
               key={href}

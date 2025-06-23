@@ -177,7 +177,7 @@ export default function AuthPage() {
             <p className="text-center text-sm text-[#FA812F]">
               {isLogin ? (
                 <>
-                  Don't have an account?{" "}
+                  Don&apos;t have an account?{" "}
                   <button
                     onClick={() => {
                       resetMessages();
