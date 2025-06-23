@@ -4,7 +4,8 @@ An AI-powered web application that generates JEE-style mock tests from PDF study
 
 ---
 Project Demo:
-https://github.com/user-attachments/assets/01f5c8ae-4330-4925-a6d7-7631bf5f9d21
+[![Project Demo](https://github.com/user-attachments/assets/01f5c8ae-4330-4925-a6d7-7631bf5f9d21)](https://github.com/user-attachments/assets/01f5c8ae-4330-4925-a6d7-7631bf5f9d21)
+
 ##  Features
 
 - Extracts text and images from academic PDFs using **PyMuPDF**
